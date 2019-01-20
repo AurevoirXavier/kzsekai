@@ -1,0 +1,16 @@
+[package]
+name = "sexy"
+version = "0.1.0"
+authors = ["Xavier Lau <c.estlavie@icloud.com>"]
+edition = "2018"
+
+[dependencies]
+clap = "2.32.0"
+colored = "1.7.0"
+lazy_static = "1.2.0"
+regex = "1.1.0"
+reqwest = "0.9.8"
+select = "0.4.2"
+serde = "1.0.85"
+serde_derive = "1.0.85"
+serde_json = "1.0.36"
