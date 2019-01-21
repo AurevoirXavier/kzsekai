@@ -11,7 +11,7 @@ use select::{
     predicate::{Attr, Class, Name, Predicate},
 };
 // --- custom ---
-use super::{CRAWLER, Site};
+use super::{CRAWLER, Post as SitePost, Site};
 
 #[derive(Debug, Default)]
 struct Content {
@@ -49,7 +49,7 @@ impl Display for PostType {
 }
 
 #[derive(Debug)]
-struct Post {
+pub struct Post {
     id: u32,
     likes: u32,
     title: String,
@@ -64,12 +64,12 @@ impl Display for Post {
         // --- external ---
         use colored::*;
 
-        let parts= self.parts
-                .iter()
-                .enumerate()
-                .map(|(i, part)| format!("        {}: {}", format!("{} {}", "Part".cyan(), i + 1), part))
-                .collect::<Vec<_>>()
-                .join("\n");
+        let parts = self.parts
+            .iter()
+            .enumerate()
+            .map(|(i, part)| format!("        {}: {}", format!("{} {}", "Part".cyan(), i + 1), part))
+            .collect::<Vec<_>>()
+            .join("\n");
         let content = {
             let mut s = String::new();
             if let Some(id) = &self.content.id { s.push_str(&format!("        {}: {}\n", "Id".cyan(), id)); }
@@ -109,7 +109,7 @@ impl Display for Post {
 pub struct Cosplayjav {
     thread: u32,
     after: Option<u32>,
-    last: Option<u32>,
+    recent: Option<u32>,
     last_view: Option<u32>,
     likes: HashSet<u32>,
     views: HashSet<u32>,
@@ -120,14 +120,20 @@ impl Cosplayjav {
         Cosplayjav {
             thread: 1,
             after: None,
-            last: None,
+            recent: None,
             last_view: None,
             likes: HashSet::new(),
             views: HashSet::new(),
         }
     }
+}
 
-    fn parse_post(&self, url: &str) -> Post {
+impl Site for Cosplayjav {
+    fn thread(&mut self, num: u32) { self.thread = num; }
+    fn after(&mut self, date: u32) { self.after = Some(date); }
+    fn recent(&mut self, num: u32) { self.recent = Some(num); }
+
+    fn parse_post(&self, url: &str) -> SitePost {
         // --- external ---
         use regex::Regex;
 
@@ -256,10 +262,10 @@ impl Cosplayjav {
 
         let post = Post { id, likes, title, cover, parts, r#type, content };
         println!("\n🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉\n\n{}", post);
-        post
+        SitePost::Cosplayjav(post)
     }
 
-    fn parse_posts(&self, html: String) -> (Vec<Post>, bool) {
+    fn parse_posts(&self, html: String) -> (Vec<SitePost>, bool) {
         let document = Document::from(html.as_str());
         let mut posts = vec![];
 
@@ -269,27 +275,31 @@ impl Cosplayjav {
                     .next()
                     .unwrap()
                     .text();
-                let mut date = date.split(' ');
+                let date: u32 = {
+                    let mut date = date.split(' ');
+                    let day = date.next().unwrap();
+                    let month = match date.next().unwrap() {
+                        "January" => "01",
+                        "February" => "02",
+                        "March" => "03",
+                        "April" => "04",
+                        "May" => "05",
+                        "June" => "06",
+                        "July" => "07",
+                        "August" => "08",
+                        "September" => "09",
+                        "October" => "10",
+                        "November" => "11",
+                        "December" => "12",
+                        _ => panic!("Invalid month")
+                    };
+                    let year = date.next().unwrap();
 
-                let day = date.next().unwrap();
-                let month = match date.next().unwrap() {
-                    "January" => "01",
-                    "February" => "02",
-                    "March" => "03",
-                    "April" => "04",
-                    "May" => "05",
-                    "June" => "06",
-                    "July" => "07",
-                    "August" => "08",
-                    "September" => "09",
-                    "October" => "10",
-                    "November" => "11",
-                    "December" => "12",
-                    _ => panic!("Invalid month")
+                    format!("{}{}{}", year, month, day).parse().unwrap()
                 };
-                let year = date.next().unwrap();
 
-                if after >= format!("{}{}{}", year, month, day).parse::<u32>().unwrap() { return (posts, true); }
+
+                if after >= date { return (posts, true); }
             }
 
             let url = article.find(Name("a"))
@@ -300,15 +310,11 @@ impl Cosplayjav {
 
             posts.push(self.parse_post(url));
 
-            if let Some(last) = self.last { if i as u32 + 1 == last { return (posts, true); } }
+            if let Some(recent) = self.recent { if i as u32 + 1 == recent { return (posts, true); } }
         }
 
         (posts, if let Some(_) = document.find(Attr("class", "disabled next page-numbers")).next() { true } else { false })
     }
-}
-
-impl Site for Cosplayjav {
-    fn parse_post(&self, url: &str) { self.parse_post(url); }
 
     fn fetch_posts(&self) {
         for page_num in 1u32.. {
@@ -318,8 +324,4 @@ impl Site for Cosplayjav {
             if is_last_page { return; }
         }
     }
-
-    fn thread(&mut self, num: u32) { self.thread = num; }
-    fn after(&mut self, date: u32) { self.after = Some(date); }
-    fn last(&mut self, num: u32) { self.last = Some(num); }
 }

@@ -73,7 +73,7 @@ fn main() {
             .short("s")
             .long("site")
             .value_name("NAME")
-            .possible_values(&["cosplayjav"])
+            .possible_values(&["cosplayjav", "japonx"])
             .help("The site that you want"))
         .arg(Arg::with_name("fetch")
             .short("f")
@@ -94,10 +94,10 @@ fn main() {
             .help("Fetch the posts whose date after specify DATE, format: [year][month][day] 20190101")
             .requires_all(&["site", "fetch"])
             .conflicts_with("parse"))
-        .arg(Arg::with_name("last")
-            .long("last")
+        .arg(Arg::with_name("recent")
+            .long("recent")
             .value_name("NUM")
-            .help("Fetch last specify NUM posts")
+            .help("Fetch recent specify NUM posts")
             .requires_all(&["site", "fetch"])
             .conflicts_with("parse"))
         .arg(Arg::with_name("parse")
@@ -122,6 +122,7 @@ fn main() {
     let mut site: Box<dyn Site> = if let Some(site) = matches.value_of("site") {
         match site {
             "cosplayjav" => Box::new(sites::cosplayjav_pl::Cosplayjav::new()),
+            "japonx" => Box::new(sites::japonx_vip::Japonx::new()),
             site => panic!("Not support {}", site)
         }
     } else {
@@ -137,7 +138,7 @@ fn main() {
     if matches.is_present("fetch") {
         if let Some(num) = matches.value_of("thread") { site.thread(num.parse().unwrap()); }
         if let Some(date) = matches.value_of("after") { site.after(date.parse().unwrap()); }
-        if let Some(num) = matches.value_of("last") { site.last(num.parse().unwrap()); }
+        if let Some(num) = matches.value_of("recent") { site.recent(num.parse().unwrap()); }
 
         site.fetch_posts();
         return;

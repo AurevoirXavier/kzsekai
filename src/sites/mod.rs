@@ -4,15 +4,21 @@ pub mod japonx_vip;
 // --- external ---
 use reqwest::{Client, ClientBuilder};
 
-pub trait Site {
-    // crawler
-    fn parse_post(&self, url: &str);
-    fn fetch_posts(&self);
+pub enum Post {
+    Cosplayjav(cosplayjav_pl::Post),
+    Japonx(japonx_vip::Post),
+}
 
+pub trait Site {
     // conf
     fn thread(&mut self, num: u32);
     fn after(&mut self, date: u32);
-    fn last(&mut self, num: u32);
+    fn recent(&mut self, num: u32);
+
+    // crawler
+    fn parse_post(&self, url: &str) -> Post;
+    fn parse_posts(&self, html: String) -> (Vec<Post>, bool);
+    fn fetch_posts(&self);
 }
 
 struct Crawler { request: Client }
