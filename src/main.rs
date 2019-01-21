@@ -65,10 +65,15 @@ fn main() {
         .about("🎉🎉 Sexy Time 🎉🎉")
         .subcommand(SubCommand::with_name("config")
             .about("Configurations of sexy")
+            .arg(Arg::with_name("show")
+                .long("show")
+                .help("Show configurations")
+                .conflicts_with("proxy"))
             .arg(Arg::with_name("proxy")
                 .long("proxy")
                 .value_name("ADDRESS")
-                .help("Use proxy with specify ADDRESS, format: [URL][PORT] http://127.0.0.1:1080")))
+                .help("Use proxy with specify ADDRESS, format: [URL][PORT] http://127.0.0.1:1080")
+                .conflicts_with("show")))
         .arg(Arg::with_name("site")
             .short("s")
             .long("site")
@@ -111,6 +116,11 @@ fn main() {
 
     if let Some(matches) = matches.subcommand_matches("config") {
         let mut conf = Conf::load_from_json_file();
+
+        if matches.is_present("show") {
+            println!("Conf: {}", serde_json::to_string_pretty(&conf).unwrap());
+            return;
+        }
 
         if let Some(address) = matches.value_of("proxy") { if address.is_empty() { conf.proxy = None; } else { conf.proxy = Some(address.to_owned()); } }
 

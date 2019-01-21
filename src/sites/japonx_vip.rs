@@ -19,54 +19,9 @@ struct PostContent {
     length: u32,
     release_date: u32,
     actress: String,
+    company: String,
     subtitles: String,
     r#type: Vec<String>,
-}
-
-impl Display for Post {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // --- external ---
-        use colored::*;
-
-        let parts = self.parts
-            .iter()
-            .enumerate()
-            .map(|(i, part)| format!("        {}: {}", format!("{} {}", "Part".cyan(), i + 1), part))
-            .collect::<Vec<_>>()
-            .join("\n");
-        let content = {
-            let mut s = String::new();
-            if let Some(id) = &self.content.id { s.push_str(&format!("        {}: {}\n", "Id".cyan(), id)); }
-            if let Some(title) = &self.content.title { s.push_str(&format!("        {}: {}\n", "Title".cyan(), title)); }
-            if let Some(alternative_title) = &self.content.alternative_title { s.push_str(&format!("        {}: {}\n", "Alternative title".cyan(), alternative_title)); }
-            if let Some(company) = &self.content.company { s.push_str(&format!("        {}: {}\n", "Company".cyan(), company)); }
-            if let Some(actress) = &self.content.actress { s.push_str(&format!("        {}: {}\n", "Actress".cyan(), actress)); }
-            if let Some(anmie_or_game_series) = &self.content.anmie_or_game_series { s.push_str(&format!("        {}: {}\n", "Anmie/Game eries".cyan(), anmie_or_game_series.join(", "))); }
-            if let Some(character_cosplay) = &self.content.character_cosplay { s.push_str(&format!("        {}: {}\n", "Character cosplay".cyan(), character_cosplay.join(", "))); }
-            if let Some(info) = &self.content.info { s.push_str(&format!("        {}: {}\n", "Info".cyan(), info.join(", "))); }
-
-            s
-        };
-
-        write!(
-            f,
-            "{} http://cosplayjav.pl/{}:\n    {}: {}\n    {}: {}\n    {}: {}\n    {}: {}\n    {}:\n{}    {}:\n{}",
-            "Post".cyan(),
-            self.id,
-            "Title".yellow(),
-            self.title,
-            "Type".yellow(),
-            self.r#type,
-            "Cover".yellow(),
-            self.cover,
-            "Likes".yellow(),
-            self.likes,
-            "Content".yellow(),
-            content,
-            "Parts".yellow(),
-            parts,
-        )
-    }
 }
 
 #[derive(Debug)]
@@ -76,6 +31,50 @@ pub struct Post {
     intro: String,
     cover: String,
     content: PostContent,
+}
+
+impl Display for Post {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // --- external ---
+        use colored::*;
+
+        let content = {
+            let mut s = String::new();
+
+            s.push_str(&format!(
+                "        {}: {}\n        {}: {}\n        {}: {}\n        {}: {}\n        {}: {}\n        {}: {}",
+                "Id".cyan(),
+                &self.content.id,
+                "Length".cyan(),
+                &self.content.length,
+                "Release date".cyan(),
+                &self.content.release_date,
+                "Company".cyan(),
+                &self.content.company,
+                "Subtitles".cyan(),
+                &self.content.subtitles,
+                "Type".cyan(),
+                &self.content.r#type.join(", "),
+            ));
+
+            s
+        };
+
+        write!(
+            f,
+            "{} https://www.japonx.vip/portal/index/detail/id/{}.html:\n    {}: {}\n    {}: {}\n    {}: {}\n    {}:\n{}",
+            "Post".cyan(),
+            self.id,
+            "Title".yellow(),
+            self.title,
+            "Intro".yellow(),
+            self.intro,
+            "Cover".yellow(),
+            self.cover,
+            "Content".yellow(),
+            content,
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -163,8 +162,12 @@ impl Site for Japonx {
                         .parse()
                         .unwrap(),
                     4 => for info in info.find(Name("a")) { c.r#type.push(info.text()); }
-                    5 => {
-                        c.actress = info.find(Name("a"))
+                    5 => c.company = info.find(Name("a"))
+                        .next()
+                        .unwrap()
+                        .text(),
+                    6 => {
+                        c.subtitles = info.find(Name("a"))
                             .next()
                             .unwrap()
                             .text();
@@ -197,7 +200,7 @@ impl Site for Japonx {
                 .attr("href")
                 .unwrap();
 
-            posts.push(self.parse_post(url));
+            posts.push(self.parse_post(&format!("https://www.japonx.vip{}", url)));
 
             if let Some(recent) = self.recent { if i as u32 + 1 == recent { return (posts, true); } }
         }

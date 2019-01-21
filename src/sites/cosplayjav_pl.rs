@@ -72,6 +72,7 @@ impl Display for Post {
             .join("\n");
         let content = {
             let mut s = String::new();
+
             if let Some(id) = &self.content.id { s.push_str(&format!("        {}: {}\n", "Id".cyan(), id)); }
             if let Some(title) = &self.content.title { s.push_str(&format!("        {}: {}\n", "Title".cyan(), title)); }
             if let Some(alternative_title) = &self.content.alternative_title { s.push_str(&format!("        {}: {}\n", "Alternative title".cyan(), alternative_title)); }
