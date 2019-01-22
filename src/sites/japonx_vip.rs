@@ -184,8 +184,17 @@ impl Site for Japonx {
         SitePost::Japonx(Post { id, title, intro, cover, content })
     }
 
-    fn parse_posts(&self, html: String) -> Vec<SitePost> {
+    fn parse_posts_page(&self, html: String) -> (bool, Vec<SitePost>) {
+        // --- std ---
+        use std::{
+            mem::swap,
+            sync::Arc,
+            thread::spawn,
+        };
+
+        let japonx = Arc::new(self.clone());
         let document = Document::from(html.as_str());
+        let mut handles = vec![];
         let mut posts = vec![];
 
         for (i, work) in document.find(Attr("id", "works").descendant(Name("li"))).enumerate() {
@@ -193,40 +202,61 @@ impl Site for Japonx {
                 .next()
                 .unwrap()
                 .attr("href")
-                .unwrap();
+                .unwrap()
+                .to_owned();
 
-            let post = self.parse_post(&format!("https://www.japonx.vip{}", url));
-            if let Some(after) = self.after {
-                match post {
-                    SitePost::Japonx(
-                        Post {
-                            content: PostContent { release_date, .. },
-                            ..
+            {
+                let japonx = japonx.clone();
+                handles.push(spawn(move || japonx.parse_post(&format!("https://www.japonx.vip{}", url))));
+
+                if handles.len() as u32 == self.thread {
+                    let mut out_of_date = false;
+
+                    let mut tmp_handles = vec![];
+                    swap(&mut handles, &mut tmp_handles);
+
+                    for handle in tmp_handles {
+                        let post = handle.join().unwrap();
+
+                        if let Some(after) = self.after {
+                            match post {
+                                SitePost::Japonx(
+                                    Post {
+                                        content: PostContent { release_date, .. },
+                                        ..
+                                    }
+                                ) => if after > release_date {
+                                    out_of_date = true;
+                                    continue;
+                                }
+                                _ => unreachable!()
+                            }
+
+                            println!("{}", post);
+                            posts.push(post);
+                        } else {
+                            println!("{}", post);
+                            posts.push(post);
                         }
-                    ) => if after > release_date { return posts; }
-                    _ => unreachable!()
-                }
+                    }
 
-                println!("{}", post);
-                posts.push(post);
-            } else {
-                println!("{}", post);
-                posts.push(self.parse_post(&format!("https://www.japonx.vip{}", url)));
+                    if out_of_date { return (true, posts); }
+                }
             }
 
-            if let Some(recent) = self.recent { if i as u32 + 1 == recent { return posts; } }
+            if let Some(recent) = self.recent {
+                if i as u32 + 1 == recent {
+                    for handle in handles { posts.push(handle.join().unwrap()); }
+                    return (true, posts);
+                }
+            }
         }
 
-        posts
+        for handle in handles { posts.push(handle.join().unwrap()); }
+        (false, posts)
     }
 
-    fn fetch_posts(&self) {
-        // --- std ---
-        use std::{
-            thread::spawn,
-            sync::{Arc, Mutex},
-        };
-
+    fn fetch_all(&self) {
         let last_page: u32 = {
             let html = CRAWLER.get_text(&format!("{}{}", urls::LATEST_POSTS_PAGE, 1));
             let document = Document::from(html.as_str());
@@ -242,32 +272,7 @@ impl Site for Japonx {
                 .parse()
                 .unwrap()
         };
-        let japonx = Arc::new(self.clone());
-        let page_num = Mutex::new(1);
 
-        'fetch: loop {
-            let mut handles = vec![];
-            for _ in 0..self.thread {
-                let page_num = {
-                    let mut page_num = page_num.lock().unwrap();
-                    *page_num += 1;
-
-                    page_num.clone()
-                };
-
-                let japonx = japonx.clone();
-                handles.push(spawn(move || {
-                    let html = CRAWLER.get_text(&format!("{}{}", urls::LATEST_POSTS_PAGE, page_num));
-                    let _posts = japonx.parse_posts(html);
-                }));
-
-                if page_num > last_page {
-                    for handle in handles { handle.join().unwrap(); }
-                    break 'fetch;
-                }
-            }
-
-            for handle in handles { handle.join().unwrap(); }
-        }
+        self.fetch_posts_pages(last_page, urls::LATEST_POSTS_PAGE);
     }
 }

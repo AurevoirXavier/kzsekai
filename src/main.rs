@@ -90,7 +90,7 @@ fn main() {
             .short("t")
             .long("thread")
             .value_name("NUM")
-            .help("Specify crawler's thread NUM")
+            .help("Specify crawler's thread NUM, the max thread amount depends on the page's posts amount")
             .requires_all(&["site", "fetch"])
             .conflicts_with("parse"))
         .arg(Arg::with_name("after")
@@ -141,7 +141,7 @@ fn main() {
     };
 
     if let Some(url) = matches.value_of("parse") {
-        site.parse_post(url);
+        println!("{}", site.parse_post(url));
         return;
     }
 
@@ -150,7 +150,7 @@ fn main() {
         if let Some(date) = matches.value_of("after") { site.after(date.parse().unwrap()); }
         if let Some(num) = matches.value_of("recent") { site.recent(num.parse().unwrap()); }
 
-        site.fetch_posts();
+        site.fetch_all();
         return;
     }
 }

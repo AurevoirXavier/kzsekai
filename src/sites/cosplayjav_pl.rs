@@ -20,6 +20,7 @@ struct Content {
     alternative_title: Option<String>,
     company: Option<String>,
     actress: Option<String>,
+    in_premium_section_to: Option<String>,
     anmie_or_game_series: Option<Vec<String>>,
     character_cosplay: Option<Vec<String>>,
     info: Option<Vec<String>>,
@@ -27,6 +28,7 @@ struct Content {
 
 #[derive(Debug)]
 enum PostType {
+    Advertisement,
     CosplayVideos,
     OnlyImages,
     Premium,
@@ -39,6 +41,7 @@ impl Display for PostType {
             f,
             "{}",
             match self {
+                PostType::Advertisement => "Advertisement",
                 PostType::CosplayVideos => "Cosplay Videos",
                 PostType::OnlyImages => "Only Images",
                 PostType::Premium => "Premium",
@@ -150,23 +153,6 @@ impl Site for Cosplayjav {
         let html = CRAWLER.get_text(url);
         let document = Document::from(html.as_str());
 
-        let likes = document.find(Class("favourites-li"))
-            .next()
-            .unwrap()
-            .text()
-            .parse()
-            .unwrap();
-        let title = document.find(Name("h1"))
-            .next()
-            .unwrap()
-            .text()
-            .to_owned();
-        let cover = document.find(Class("post-thumb").descendant(Name("img")))
-            .next()
-            .unwrap()
-            .attr("src")
-            .unwrap()
-            .to_owned();
         let r#type = {
             let s = document.find(Class("post-aside"))
                 .next()
@@ -190,71 +176,102 @@ impl Site for Cosplayjav {
             match r#type {
                 PostType::Premium | PostType::Wishlist => vec![],
                 _ => {
-                    let parts_len = document.find(Class("item-parts").descendant(Name("a")))
-                        .into_iter()
-                        .fold(0u8, |acc, _| acc + 1);
+                    if let Some(item_parts) = document.find(Class("item-parts")).next() {
+                        let parts_len = item_parts.find(Name("a"))
+                            .into_iter()
+                            .fold(0u8, |acc, _| acc + 1);
 
-                    let mut handles = vec![];
-                    for part in 1..=parts_len {
-                        handles.push(spawn(move || {
-                            let download_page = CRAWLER.get_text(&format!("http://cosplayjav.pl/download/?forPost={}&part={}", id, part));
-                            let document = Document::from(download_page.as_str());
+                        let mut handles = vec![];
+                        for part in 1..=parts_len {
+                            handles.push(spawn(move || {
+                                let download_page = CRAWLER.get_text(&format!("http://cosplayjav.pl/download/?forPost={}&part={}", id, part));
+                                let document = Document::from(download_page.as_str());
 
-                            document.find(Attr("class", "btn btn-primary btn-download"))
-                                .next()
-                                .unwrap()
-                                .attr("href")
-                                .unwrap()
-                                .to_owned()
-                        }));
+                                document.find(Attr("class", "btn btn-primary btn-download"))
+                                    .next()
+                                    .unwrap()
+                                    .attr("href")
+                                    .unwrap()
+                                    .to_owned()
+                            }));
+                        }
+
+                        let mut v = vec![];
+                        for handle in handles { v.push(handle.join().unwrap()); }
+
+                        v
+                    } else {
+                        return SitePost::Cosplayjav(Post {
+                            id,
+                            likes: 0,
+                            title: String::new(),
+                            cover: String::new(),
+                            parts: vec![],
+                            content: Content::default(),
+                            r#type: PostType::Advertisement,
+                        });
                     }
-
-                    let mut v = vec![];
-                    for handle in handles { v.push(handle.join().unwrap()); }
-
-                    v
                 }
             }
         };
+        let likes = document.find(Class("favourites-li"))
+            .next()
+            .unwrap()
+            .text()
+            .parse()
+            .unwrap();
+        let title = document.find(Name("h1"))
+            .next()
+            .unwrap()
+            .text()
+            .to_owned();
+        let cover = document.find(Class("post-thumb").descendant(Name("img")))
+            .next()
+            .unwrap()
+            .attr("src")
+            .unwrap()
+            .to_owned();
         let content = {
-            // --- external ---
-            use select::node::Node;
-
-            fn split_multi_info(infos: Node) -> Vec<String> {
-                let v: Vec<_> = infos.find(Name("a"))
-                    .into_iter()
-                    .map(|info| info.text())
-                    .collect();
-
-                if v.is_empty() {
-                    let infos = infos.text();
-                    if infos.contains('\n') { infos.lines().map(|line| line.to_owned()).collect() } else {
-                        infos.split('/')
-                            .map(|info| info.trim().to_owned())
-                            .filter(|info| !info.is_empty())
-                            .collect()
-                    }
-                } else { v }
-            }
-
             let mut c = Content::default();
-            for info in document.find(
-                Class("item-info").descendant(Name("table").descendant(Name("tr")))) {
-                let (k, v) = {
-                    let mut kv = info.find(Name("td"));
-                    (kv.next().unwrap().text(), kv.next().unwrap())
-                };
+            if let Some(item_info) = document.find(Class("item-info")).next() {
+                // --- external ---
+                use select::node::Node;
 
-                match k.trim_end_matches(" – ") {
-                    "ID" => c.id = Some(v.text()),
-                    "TITLE" => c.title = Some(v.text()),
-                    "ALTERNATIVE TITLE" => c.alternative_title = Some(v.text()),
-                    "COMPANY" => c.company = Some(v.text()),
-                    "ACTRESS" => c.actress = Some(v.text()),
-                    "ANIME/GAME SERIES" => c.anmie_or_game_series = Some(split_multi_info(v)),
-                    "CHARACTER COSPLAY" => c.character_cosplay = Some(split_multi_info(v)),
-                    "INFO" => c.info = Some(split_multi_info(v)),
-                    not_covered => panic!("Found not covered field {}", not_covered)
+                fn split_multi_info(infos: Node) -> Vec<String> {
+                    let v: Vec<_> = infos.find(Name("a"))
+                        .into_iter()
+                        .map(|info| info.text())
+                        .collect();
+
+                    if v.is_empty() {
+                        let infos = infos.text();
+                        if infos.contains('\n') { infos.lines().map(|line| line.to_owned()).collect() } else {
+                            infos.split('/')
+                                .map(|info| info.trim().to_owned())
+                                .filter(|info| !info.is_empty())
+                                .collect()
+                        }
+                    } else { v }
+                }
+
+                for info in item_info.find(Name("table").descendant(Name("tr"))) {
+                    let mut kv = info.find(Name("td"));
+                    if let Some(k) = kv.next() {
+                        if let Some(v) = kv.next() {
+                            match k.text().replace('–', "").trim() {
+                                "ID" => c.id = Some(v.text()),
+                                "TITLE" => c.title = Some(v.text()),
+                                "ALTERNATIVE TITLE" => c.alternative_title = Some(v.text()),
+                                "COMPANY" => c.company = Some(v.text()),
+                                "ACTRESS" | "ACRESS" => c.actress = Some(v.text()),
+                                k if k.contains("PREMIUM") => c.in_premium_section_to = Some(v.text()),
+                                "ANIME/GAME SERIES" => c.anmie_or_game_series = Some(split_multi_info(v)),
+                                "CHARACTER COSPLAY" => c.character_cosplay = Some(split_multi_info(v)),
+                                "INFO" => c.info = Some(split_multi_info(v)),
+                                _ => continue
+                            }
+                        }
+                    } else { continue; }
                 }
             }
 
@@ -264,8 +281,17 @@ impl Site for Cosplayjav {
         SitePost::Cosplayjav(Post { id, likes, title, cover, parts, r#type, content })
     }
 
-    fn parse_posts(&self, html: String) -> Vec<SitePost> {
+    fn parse_posts_page(&self, html: String) -> (bool, Vec<SitePost>) {
+        // --- std ---
+        use std::{
+            mem::swap,
+            sync::Arc,
+            thread::spawn,
+        };
+
+        let cosplayjav = Arc::new(self.clone());
         let document = Document::from(html.as_str());
+        let mut handles = vec![];
         let mut posts = vec![];
 
         for (i, article) in document.find(Attr("id", "main-section").descendant(Name("article"))).enumerate() {
@@ -298,32 +324,45 @@ impl Site for Cosplayjav {
                 };
 
 
-                if after > date { return posts; }
+                if after > date { return (true, posts); }
             }
 
             let url = article.find(Name("a"))
                 .next()
                 .unwrap()
                 .attr("href")
-                .unwrap();
+                .unwrap()
+                .to_owned();
 
-            let post = self.parse_post(url);
-            println!("{}", post);
-            posts.push(post);
+            {
+                let cosplayjav = cosplayjav.clone();
+                handles.push(spawn(move || cosplayjav.parse_post(&url)));
 
-            if let Some(recent) = self.recent { if i as u32 + 1 == recent { return posts; } }
+                if handles.len() as u32 == self.thread {
+                    let mut tmp_handles = vec![];
+                    swap(&mut handles, &mut tmp_handles);
+
+                    for handle in tmp_handles {
+                        let post = handle.join().unwrap();
+                        println!("{}", post);
+                        posts.push(post);
+                    }
+                }
+            }
+
+            if let Some(recent) = self.recent {
+                if i as u32 + 1 == recent {
+                    for handle in handles { posts.push(handle.join().unwrap()); }
+                    return (true, posts);
+                }
+            }
         }
 
-        posts
+        for handle in handles { posts.push(handle.join().unwrap()); }
+        (false, posts)
     }
 
-    fn fetch_posts(&self) {
-        // --- std ---
-        use std::{
-            thread::spawn,
-            sync::{Arc, Mutex},
-        };
-
+    fn fetch_all(&self) {
         let last_page: u32 = {
             let html = CRAWLER.get_text(&format!("{}{}", urls::POSTS_PAGE, 1));
             let document = Document::from(html.as_str());
@@ -339,32 +378,7 @@ impl Site for Cosplayjav {
                 .parse()
                 .unwrap()
         };
-        let cosplayjav = Arc::new(self.clone());
-        let page_num = Mutex::new(1);
 
-        'fetch: loop {
-            let mut handles = vec![];
-            for _ in 0..self.thread {
-                let page_num = {
-                    let mut page_num = page_num.lock().unwrap();
-                    *page_num += 1;
-
-                    page_num.clone()
-                };
-
-                let cosplayjav = cosplayjav.clone();
-                handles.push(spawn(move || {
-                    let html = CRAWLER.get_text(&format!("{}{}", urls::POSTS_PAGE, page_num));
-                    let _posts = cosplayjav.parse_posts(html);
-                }));
-
-                if page_num > last_page {
-                    for handle in handles { handle.join().unwrap(); }
-                    break 'fetch;
-                }
-            }
-
-            for handle in handles { handle.join().unwrap(); }
-        }
+        self.fetch_posts_pages(last_page, urls::POSTS_PAGE);
     }
 }
