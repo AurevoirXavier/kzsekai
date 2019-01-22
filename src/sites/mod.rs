@@ -1,12 +1,23 @@
 pub mod cosplayjav_pl;
 pub mod japonx_vip;
 
+// --- std ---
+use std::fmt::{Formatter, Display, self};
 // --- external ---
 use reqwest::{Client, ClientBuilder};
 
 pub enum Post {
     Cosplayjav(cosplayjav_pl::Post),
     Japonx(japonx_vip::Post),
+}
+
+impl Display for Post {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Post::Cosplayjav(post) => write!(f, "\n🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉\n\n{}", post),
+            Post::Japonx(post) => write!(f, "\n🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉\n\n{}", post),
+        }
+    }
 }
 
 pub trait Site {
@@ -17,7 +28,7 @@ pub trait Site {
 
     // crawler
     fn parse_post(&self, url: &str) -> Post;
-    fn parse_posts(&self, html: String) -> (Vec<Post>, bool);
+    fn parse_posts(&self, html: String) -> Vec<Post>;
     fn fetch_posts(&self);
 }
 

@@ -106,7 +106,7 @@ impl Display for Post {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Cosplayjav {
     thread: u32,
     after: Option<u32>,
@@ -261,12 +261,10 @@ impl Site for Cosplayjav {
             c
         };
 
-        let post = Post { id, likes, title, cover, parts, r#type, content };
-        println!("\n🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉\n\n{}", post);
-        SitePost::Cosplayjav(post)
+        SitePost::Cosplayjav(Post { id, likes, title, cover, parts, r#type, content })
     }
 
-    fn parse_posts(&self, html: String) -> (Vec<SitePost>, bool) {
+    fn parse_posts(&self, html: String) -> Vec<SitePost> {
         let document = Document::from(html.as_str());
         let mut posts = vec![];
 
@@ -300,7 +298,7 @@ impl Site for Cosplayjav {
                 };
 
 
-                if after >= date { return (posts, true); }
+                if after > date { return posts; }
             }
 
             let url = article.find(Name("a"))
@@ -309,20 +307,64 @@ impl Site for Cosplayjav {
                 .attr("href")
                 .unwrap();
 
-            posts.push(self.parse_post(url));
+            let post = self.parse_post(url);
+            println!("{}", post);
+            posts.push(post);
 
-            if let Some(recent) = self.recent { if i as u32 + 1 == recent { return (posts, true); } }
+            if let Some(recent) = self.recent { if i as u32 + 1 == recent { return posts; } }
         }
 
-        (posts, if let Some(_) = document.find(Attr("class", "disabled next page-numbers")).next() { true } else { false })
+        posts
     }
 
     fn fetch_posts(&self) {
-        for page_num in 1u32.. {
-            let html = CRAWLER.get_text(&format!("{}{}", urls::POSTS_PAGE, page_num));
-            let (_posts, is_last_page) = self.parse_posts(html);
+        // --- std ---
+        use std::{
+            thread::spawn,
+            sync::{Arc, Mutex},
+        };
 
-            if is_last_page { return; }
+        let last_page: u32 = {
+            let html = CRAWLER.get_text(&format!("{}{}", urls::POSTS_PAGE, 1));
+            let document = Document::from(html.as_str());
+
+            document.find(Attr("id", "pagination-elem"))
+                .next()
+                .unwrap()
+                .find(Name("a"))
+                .skip(6)
+                .next()
+                .unwrap()
+                .text()
+                .parse()
+                .unwrap()
+        };
+        let cosplayjav = Arc::new(self.clone());
+        let page_num = Mutex::new(1);
+
+        'fetch: loop {
+            let mut handles = vec![];
+            for _ in 0..self.thread {
+                let page_num = {
+                    let mut page_num = page_num.lock().unwrap();
+                    *page_num += 1;
+
+                    page_num.clone()
+                };
+
+                let cosplayjav = cosplayjav.clone();
+                handles.push(spawn(move || {
+                    let html = CRAWLER.get_text(&format!("{}{}", urls::POSTS_PAGE, page_num));
+                    let _posts = cosplayjav.parse_posts(html);
+                }));
+
+                if page_num > last_page {
+                    for handle in handles { handle.join().unwrap(); }
+                    break 'fetch;
+                }
+            }
+
+            for handle in handles { handle.join().unwrap(); }
         }
     }
 }
