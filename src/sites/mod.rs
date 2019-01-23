@@ -2,7 +2,10 @@ pub mod cosplayjav_pl;
 pub mod japonx_vip;
 
 // --- std ---
-use std::fmt::{Formatter, Display, self};
+use std::{
+    fmt::{Formatter, Display, self},
+    thread::JoinHandle,
+};
 // --- external ---
 use reqwest::{Client, ClientBuilder};
 
@@ -76,8 +79,21 @@ pub trait Site {
     fn after(&mut self, date: u32);
     fn recent(&mut self, num: u32);
 
+
+    // collect
+    fn collect_posts(handles: Vec<JoinHandle<Option<Post>>>, posts: &mut Vec<Post>)
+        where Self: Sized
+    {
+        for handle in handles {
+            if let Some(post) = handle.join().unwrap() {
+                println!("{}", post);
+                posts.push(post);
+            }
+        }
+    }
+
     // fetch and parse
-    fn parse_post(&self, url: &str) -> Post;
+    fn parse_post(&self, url: &str) -> Option<Post>;
 
     fn parse_posts_page(&self, html: String) -> (bool, Vec<Post>);
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {

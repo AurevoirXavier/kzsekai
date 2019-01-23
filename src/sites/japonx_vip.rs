@@ -105,7 +105,7 @@ impl Site for Japonx {
     fn after(&mut self, date: u32) { self.after = Some(date); }
     fn recent(&mut self, num: u32) { self.recent = Some(num); }
 
-    fn parse_post(&self, url: &str) -> SitePost {
+    fn parse_post(&self, url: &str) -> Option<SitePost> {
         // --- external ---
         use regex::Regex;
 
@@ -154,13 +154,19 @@ impl Site for Japonx {
                         .next()
                         .unwrap()
                         .text(),
-                    3 => c.release_date = info.find(Name("a"))
-                        .next()
-                        .unwrap()
-                        .text()
-                        .replace('-', "")
-                        .parse()
-                        .unwrap(),
+                    3 => {
+                        let release_date = info.find(Name("a"))
+                            .next()
+                            .unwrap()
+                            .text()
+                            .replace('-', "")
+                            .parse()
+                            .unwrap();
+
+                        if let Some(after) = self.after { if after > release_date { return None; } }
+
+                        c.release_date = release_date;
+                    }
                     4 => for info in info.find(Name("a")) { c.r#type.push(info.text()); }
                     5 => c.company = info.find(Name("a"))
                         .next()
@@ -181,7 +187,7 @@ impl Site for Japonx {
             c
         };
 
-        SitePost::Japonx(Post { id, title, intro, cover, content })
+        Some(SitePost::Japonx(Post { id, title, intro, cover, content }))
     }
 
     fn parse_posts_page(&self, html: String) -> (bool, Vec<SitePost>) {
@@ -210,49 +216,22 @@ impl Site for Japonx {
                 handles.push(spawn(move || japonx.parse_post(&format!("https://www.japonx.vip{}", url))));
 
                 if handles.len() as u32 == self.thread {
-                    let mut out_of_date = false;
-
                     let mut tmp_handles = vec![];
                     swap(&mut handles, &mut tmp_handles);
 
-                    for handle in tmp_handles {
-                        let post = handle.join().unwrap();
-
-                        if let Some(after) = self.after {
-                            match post {
-                                SitePost::Japonx(
-                                    Post {
-                                        content: PostContent { release_date, .. },
-                                        ..
-                                    }
-                                ) => if after > release_date {
-                                    out_of_date = true;
-                                    continue;
-                                }
-                                _ => unreachable!()
-                            }
-
-                            println!("{}", post);
-                            posts.push(post);
-                        } else {
-                            println!("{}", post);
-                            posts.push(post);
-                        }
-                    }
-
-                    if out_of_date { return (true, posts); }
+                    <Japonx as Site>::collect_posts(tmp_handles, &mut posts);
                 }
             }
 
             if let Some(recent) = self.recent {
                 if i as u32 + 1 == recent {
-                    for handle in handles { posts.push(handle.join().unwrap()); }
+                    <Japonx as Site>::collect_posts(handles, &mut posts);
                     return (true, posts);
                 }
             }
         }
 
-        for handle in handles { posts.push(handle.join().unwrap()); }
+        <Japonx as Site>::collect_posts(handles, &mut posts);
         (false, posts)
     }
 

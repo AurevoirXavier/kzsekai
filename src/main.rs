@@ -141,8 +141,10 @@ fn main() {
     };
 
     if let Some(url) = matches.value_of("parse") {
-        println!("{}", site.parse_post(url));
-        return;
+        if let Some(post) = site.parse_post(url) {
+            println!("{}", post);
+            return;
+        } else { println!("Invalid post"); }
     }
 
     if matches.is_present("fetch") {

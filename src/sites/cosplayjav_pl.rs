@@ -28,7 +28,6 @@ struct Content {
 
 #[derive(Debug)]
 enum PostType {
-    Advertisement,
     CosplayVideos,
     OnlyImages,
     Premium,
@@ -41,7 +40,6 @@ impl Display for PostType {
             f,
             "{}",
             match self {
-                PostType::Advertisement => "Advertisement",
                 PostType::CosplayVideos => "Cosplay Videos",
                 PostType::OnlyImages => "Only Images",
                 PostType::Premium => "Premium",
@@ -137,7 +135,7 @@ impl Site for Cosplayjav {
     fn after(&mut self, date: u32) { self.after = Some(date); }
     fn recent(&mut self, num: u32) { self.recent = Some(num); }
 
-    fn parse_post(&self, url: &str) -> SitePost {
+    fn parse_post(&self, url: &str) -> Option<SitePost> {
         // --- external ---
         use regex::Regex;
 
@@ -200,17 +198,7 @@ impl Site for Cosplayjav {
                         for handle in handles { v.push(handle.join().unwrap()); }
 
                         v
-                    } else {
-                        return SitePost::Cosplayjav(Post {
-                            id,
-                            likes: 0,
-                            title: String::new(),
-                            cover: String::new(),
-                            parts: vec![],
-                            content: Content::default(),
-                            r#type: PostType::Advertisement,
-                        });
-                    }
+                    } else { return None; }
                 }
             }
         };
@@ -278,7 +266,7 @@ impl Site for Cosplayjav {
             c
         };
 
-        SitePost::Cosplayjav(Post { id, likes, title, cover, parts, r#type, content })
+        Some(SitePost::Cosplayjav(Post { id, likes, title, cover, parts, r#type, content }))
     }
 
     fn parse_posts_page(&self, html: String) -> (bool, Vec<SitePost>) {
@@ -316,13 +304,12 @@ impl Site for Cosplayjav {
                         "October" => "10",
                         "November" => "11",
                         "December" => "12",
-                        _ => panic!("Invalid month")
+                        _ => unreachable!()
                     };
                     let year = date.next().unwrap();
 
                     format!("{}{}{}", year, month, day).parse().unwrap()
                 };
-
 
                 if after > date { return (true, posts); }
             }
@@ -342,23 +329,19 @@ impl Site for Cosplayjav {
                     let mut tmp_handles = vec![];
                     swap(&mut handles, &mut tmp_handles);
 
-                    for handle in tmp_handles {
-                        let post = handle.join().unwrap();
-                        println!("{}", post);
-                        posts.push(post);
-                    }
+                    <Cosplayjav as Site>::collect_posts(tmp_handles, &mut posts);
                 }
             }
 
             if let Some(recent) = self.recent {
                 if i as u32 + 1 == recent {
-                    for handle in handles { posts.push(handle.join().unwrap()); }
+                    <Cosplayjav as Site>::collect_posts(handles, &mut posts);
                     return (true, posts);
                 }
             }
         }
 
-        for handle in handles { posts.push(handle.join().unwrap()); }
+        <Cosplayjav as Site>::collect_posts(handles, &mut posts);
         (false, posts)
     }
 
