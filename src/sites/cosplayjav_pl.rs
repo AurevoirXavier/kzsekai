@@ -309,7 +309,10 @@ impl Site for Cosplayjav {
                     format!("{}{}{}", year, month, day).parse().unwrap()
                 };
 
-                if after > date { return (true, posts); }
+                if after > date {
+                    <Cosplayjav as Site>::collect_posts(handles, &mut posts);
+                    return (true, posts);
+                }
             }
 
             let url = article.find(Name("a"))
