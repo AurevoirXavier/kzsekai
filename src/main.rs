@@ -83,7 +83,7 @@ fn main() {
         .arg(Arg::with_name("fetch")
             .short("f")
             .long("fetch")
-            .help("Fetch all Posts")
+            .help("Fetch all posts")
             .requires("site")
             .conflicts_with("parse"))
         .arg(Arg::with_name("thread")
@@ -109,7 +109,7 @@ fn main() {
             .short("p")
             .long("parse")
             .value_name("URL")
-            .help("Specify the Post's url")
+            .help("Specify the post's url")
             .requires("site")
             .conflicts_with("fetch"))
         .get_matches();
