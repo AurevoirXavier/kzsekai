@@ -79,7 +79,6 @@ pub trait Site {
     fn after(&mut self, date: u32);
     fn recent(&mut self, num: u32);
 
-
     // collect
     fn collect_posts(handles: Vec<JoinHandle<Option<Post>>>, posts: &mut Vec<Post>)
         where Self: Sized

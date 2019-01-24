@@ -82,7 +82,6 @@ pub struct Japonx {
     thread: u32,
     after: Option<u32>,
     recent: Option<u32>,
-    last_view: Option<u32>,
     likes: HashSet<u32>,
     views: HashSet<u32>,
 }
@@ -93,7 +92,6 @@ impl Japonx {
             thread: 1,
             after: None,
             recent: None,
-            last_view: None,
             likes: HashSet::new(),
             views: HashSet::new(),
         }
