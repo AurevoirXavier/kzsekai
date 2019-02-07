@@ -40,7 +40,7 @@ SUBCOMMANDS:
 
 #### Example
 
- 
+
 
 #### Screenshot
 
