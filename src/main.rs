@@ -22,7 +22,7 @@ fn main() {
     use sites::Site;
 
     let matches = App::new("sexy")
-        .version("0.1.0 alpha version")
+        .version("v0.1.2-beta version")
         .author("Xavier Lau <c.estlavie@icloud.com>")
         .about("🎉🎉 Sexy Time 🎉🎉")
         .subcommand(SubCommand::with_name("config")

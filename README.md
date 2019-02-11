@@ -21,13 +21,19 @@ Just Sexy.
 `cargo run --release -- --help` or `sexy --help` or `sexy.exe --help`:
 
 ```text
+sexy 0.1.0 alpha version
+Xavier Lau <c.estlavie@icloud.com>
+🎉🎉 Sexy Time 🎉🎉
+
 USAGE:
     sexy [FLAGS] [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
-    -f, --fetch      Fetch all posts
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+        --database    Save to database
+    -f, --fetch       Fetch all posts
+    -h, --help        Prints help information
+        --silent      Capture the output
+    -V, --version     Prints version information
 
 OPTIONS:
         --after <DATE>    Fetch the posts whose date after specify DATE, format: [year][month][day] 20190101
@@ -39,7 +45,6 @@ OPTIONS:
 SUBCOMMANDS:
     config    Configurations of sexy
     help      Prints this message or the help of the given subcommand(s)
-
 ```
 
 #### Screenshot
