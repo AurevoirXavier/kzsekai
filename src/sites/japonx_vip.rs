@@ -233,6 +233,15 @@ impl Site for Japonx {
         (false, posts)
     }
 
+    fn fetch_posts_pages(&self, last_page: u32, url: &str) {
+        for page_num in 1..last_page {
+            let html = CRAWLER.get_text(&format!("{}{}", url, page_num));
+            let (stop, _posts) = self.parse_posts_page(html);
+
+            if stop { return; }
+        }
+    }
+
     fn fetch_all(&self) {
         let last_page: u32 = {
             let html = CRAWLER.get_text(&format!("{}{}", urls::LATEST_POSTS_PAGE, 1));

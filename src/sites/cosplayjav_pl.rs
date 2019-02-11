@@ -1,4 +1,8 @@
-mod urls { pub const POSTS_PAGE: &'static str = "http://cosplayjav.pl/page/"; }
+mod urls {
+    pub const HOMEPAGE: &'static str = "http://cosplayjav.pl";
+    pub const POSTS_PAGE: &'static str = "http://cosplayjav.pl/page/";
+    pub const DOWNLOAD_PAGE: &'static str = "http://cosplayjav.pl/download/?";
+}
 
 // --- std ---
 use std::{
@@ -6,6 +10,7 @@ use std::{
     fmt::{Formatter, Display, self},
 };
 // --- external ---
+use reqwest::header::{COOKIE, USER_AGENT, HeaderMap};
 use select::{
     document::Document,
     predicate::{Attr, Class, Name, Predicate},
@@ -114,16 +119,41 @@ pub struct Cosplayjav {
     recent: Option<u32>,
     likes: HashSet<u32>,
     views: HashSet<u32>,
+    headers: HeaderMap,
 }
 
 impl Cosplayjav {
     pub fn new() -> Cosplayjav {
+        let headers = if CRAWLER.get_status(urls::HOMEPAGE) == 503 {
+            // --- external ---
+            use cloudflare_bypasser::Bypasser;
+            // --- custom ---
+            use crate::conf::CONF;
+
+            let mut bypasser = Bypasser::new().user_agent("Mozilla/5.0");
+            let conf = CONF.lock().unwrap();
+            if let Some(ref proxy) = conf.proxy { bypasser = bypasser.proxy(proxy); }
+
+            println!("We're trying to bypass cloudflare's anti-bot page, it might takes few seconds...");
+            let mut h = HeaderMap::new();
+            loop {
+                if let Ok((c, ua)) = bypasser.bypass(urls::HOMEPAGE) {
+                    h.insert(COOKIE, c);
+                    h.insert(USER_AGENT, ua);
+                    break;
+                }
+            }
+
+            h
+        } else { HeaderMap::new() };
+
         Cosplayjav {
             thread: 1,
             after: None,
             recent: None,
             likes: HashSet::new(),
             views: HashSet::new(),
+            headers,
         }
     }
 }
@@ -146,7 +176,7 @@ impl Site for Cosplayjav {
             .parse()
             .unwrap();
 
-        let html = CRAWLER.get_text(url);
+        let html = CRAWLER.get_text_with_headers(url, &self.headers);
         let document = Document::from(html.as_str());
 
         let r#type = {
@@ -167,7 +197,10 @@ impl Site for Cosplayjav {
         };
         let parts = {
             // --- std ---
-            use std::thread::spawn;
+            use std::{
+                sync::Arc,
+                thread::spawn,
+            };
 
             match r#type {
                 PostType::Premium | PostType::Wishlist => vec![],
@@ -177,10 +210,12 @@ impl Site for Cosplayjav {
                             .into_iter()
                             .fold(0u8, |acc, _| acc + 1);
 
+                        let headers = Arc::new(self.headers.clone());
                         let mut handles = vec![];
                         for part in 1..=parts_len {
+                            let headers = headers.clone();
                             handles.push(spawn(move || {
-                                let download_page = CRAWLER.get_text(&format!("http://cosplayjav.pl/download/?forPost={}&part={}", id, part));
+                                let download_page = CRAWLER.get_text_with_headers(&format!("{}forPost={}&part={}", urls::DOWNLOAD_PAGE, id, part), &headers);
                                 let document = Document::from(download_page.as_str());
 
                                 document.find(Attr("class", "btn btn-primary btn-download"))
@@ -329,7 +364,6 @@ impl Site for Cosplayjav {
                 if handles.len() as u32 == self.thread {
                     let mut tmp_handles = vec![];
                     swap(&mut handles, &mut tmp_handles);
-
                     <Cosplayjav as Site>::collect_posts(tmp_handles, &mut posts);
                 }
             }
@@ -346,9 +380,18 @@ impl Site for Cosplayjav {
         (false, posts)
     }
 
+    fn fetch_posts_pages(&self, last_page: u32, url: &str) {
+        for page_num in 1..last_page {
+            let html = CRAWLER.get_text_with_headers(&format!("{}{}", url, page_num), &self.headers);
+            let (stop, _posts) = self.parse_posts_page(html);
+
+            if stop { return; }
+        }
+    }
+
     fn fetch_all(&self) {
         let last_page: u32 = {
-            let html = CRAWLER.get_text(&format!("{}{}", urls::POSTS_PAGE, 1));
+            let html = CRAWLER.get_text_with_headers(&format!("{}{}", urls::POSTS_PAGE, 1), &self.headers);
             let document = Document::from(html.as_str());
 
             document.find(Attr("id", "pagination-elem"))

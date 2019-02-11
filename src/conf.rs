@@ -2,10 +2,11 @@
 use std::{
     fs::{File, create_dir},
     path::Path,
+    sync::Mutex,
 };
 
 #[derive(Serialize, Deserialize)]
-pub struct Conf { proxy: Option<String> }
+pub struct Conf { pub proxy: Option<String> }
 
 impl Conf {
     pub fn path() -> String {
@@ -13,7 +14,7 @@ impl Conf {
         use std::env::current_exe;
 
         let dir = format!(
-            "{}/sexy",
+            "{}/.sexy",
             current_exe().unwrap()
                 .parent()
                 .unwrap()
@@ -21,7 +22,7 @@ impl Conf {
                 .unwrap()
         );
 
-        if !Path::new(&dir).is_dir() { Path::create_dir(&dir).unwrap(); }
+        if !Path::new(&dir).is_dir() { create_dir(&dir).unwrap(); }
 
         format!("{}/conf.json", dir)
     }
@@ -35,3 +36,5 @@ impl Conf {
 }
 
 impl Default for Conf { fn default() -> Conf { Conf { proxy: None } } }
+
+lazy_static! { pub static ref CONF: Mutex<Conf> = Mutex::new(Conf::load_from_json_file()); }

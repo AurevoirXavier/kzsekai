@@ -11,6 +11,8 @@ use reqwest::{
     Client, ClientBuilder,
     header::HeaderMap,
 };
+// --- custom ---
+use crate::conf::CONF;
 
 struct Crawler { request: Client }
 
@@ -37,6 +39,17 @@ impl Crawler {
         }
     }
 
+    fn get_status(&self, url: &str) -> u16 {
+        loop {
+            match self.request
+                .get(url)
+                .send() {
+                Ok(resp) => return resp.status().as_u16(),
+                Err(e) => println!("At get_status() send(), {:?}", e),
+            }
+        }
+    }
+
     fn get_text(&self, url: &str) -> String {
         loop {
             match self.request
@@ -51,11 +64,11 @@ impl Crawler {
         }
     }
 
-    fn get_text_with_headers(&self, url: &str, headers: HeaderMap) -> String {
+    fn get_text_with_headers(&self, url: &str, headers: &HeaderMap) -> String {
         loop {
             match self.request
                 .get(url)
-                .headers(headers)
+                .headers(headers.clone())
                 .send() {
                 Ok(mut resp) => match resp.text() {
                     Ok(text) => return text,
@@ -79,13 +92,13 @@ impl Crawler {
                     Ok(_) => return v,
                     Err(e) => println!("At get_bytes() read_to_end(), {:?}", e),
                 }
-                Err(_) => println!("At get_bytes() send(), {:?}", e),
+                Err(e) => println!("At get_bytes() send(), {:?}", e),
             }
         }
     }
 }
 
-lazy_static! { static ref CRAWLER: Crawler = if let Some(address) = &super::CONF.proxy { Crawler::new_with_proxy(address) } else { Crawler::new() }; }
+lazy_static! { static ref CRAWLER: Crawler = if let Some(ref address) = CONF.lock().unwrap().proxy { Crawler::new_with_proxy(address) } else { Crawler::new() };}
 
 pub enum Post {
     Cosplayjav(cosplayjav_pl::Post),
@@ -121,16 +134,8 @@ pub trait Site {
 
     // fetch and parse
     fn parse_post(&self, url: &str) -> Option<Post>;
-
     fn parse_posts_page(&self, html: String) -> (bool, Vec<Post>);
-    fn fetch_posts_pages(&self, last_page: u32, url: &str) {
-        for page_num in 1..last_page {
-            let html = CRAWLER.get_text(&format!("{}{}", url, page_num));
-            let (stop, _posts) = self.parse_posts_page(html);
-
-            if stop { return; }
-        }
-    }
+    fn fetch_posts_pages(&self, last_page: u32, url: &str);
 
     // fetch
     fn fetch_all(&self);

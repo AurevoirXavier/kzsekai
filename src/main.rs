@@ -11,48 +11,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
+mod conf;
 mod sites;
-
-#[derive(Serialize, Deserialize)]
-struct Conf { proxy: Option<String> }
-
-impl Conf {
-    fn path() -> String {
-        // --- std ---
-        use std::env::current_exe;
-
-        format!(
-            "{}/sexy_conf.json",
-            current_exe().unwrap()
-                .parent()
-                .unwrap()
-                .to_str()
-                .unwrap()
-        )
-    }
-
-    fn load_from_json_file() -> Conf {
-        // --- std ---
-        use std::{
-            fs::File,
-            path::Path,
-        };
-
-        let path = Conf::path();
-        if Path::new(&path).is_file() { serde_json::from_reader(File::open(&path).unwrap()).unwrap() } else { Conf::default() }
-    }
-
-    fn save_to_json_file(&self) {
-        // --- std ---
-        use std::fs::File;
-
-        serde_json::to_writer_pretty(&mut File::create(&Conf::path()).unwrap(), self).unwrap()
-    }
-}
-
-impl Default for Conf { fn default() -> Conf { Conf { proxy: None } } }
-
-lazy_static! { static ref CONF: Conf = Conf::load_from_json_file(); }
 
 fn main() {
     // --- external ---
@@ -116,17 +76,19 @@ fn main() {
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("config") {
-        let mut conf = Conf::load_from_json_file();
+        // --- custom ---
+        use conf::CONF;
+
+        let mut conf = CONF.lock().unwrap();
 
         if matches.is_present("show") {
-            println!("Conf: {}", serde_json::to_string_pretty(&conf).unwrap());
+            println!("Conf: {}", serde_json::to_string_pretty(&*conf).unwrap());
             return;
         }
 
         if let Some(address) = matches.value_of("proxy") { if address.is_empty() { conf.proxy = None; } else { conf.proxy = Some(address.to_owned()); } }
 
         conf.save_to_json_file();
-
         return;
     }
 
