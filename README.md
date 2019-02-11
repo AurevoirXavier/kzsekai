@@ -38,10 +38,6 @@ SUBCOMMANDS:
 
 ```
 
-#### Example
-
-
-
 #### Screenshot
 
 ![screenshot](demo.png)
