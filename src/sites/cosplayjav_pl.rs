@@ -1,7 +1,6 @@
 mod urls {
     pub const HOMEPAGE: &'static str = "http://cosplayjav.pl";
     pub const POSTS_PAGE: &'static str = "http://cosplayjav.pl/page/";
-    pub const DOWNLOAD_PAGE: &'static str = "http://cosplayjav.pl/download/?";
 }
 
 // --- std ---
@@ -231,18 +230,15 @@ impl Site for Cosplayjav {
         // --- external ---
         use regex::Regex;
 
-        let re = Regex::new(r"cosplayjav.pl/(\d+?)/").unwrap();
-        let id = re.captures(url)
-            .unwrap()
-            .get(1)
-            .unwrap()
-            .as_str()
-            .parse()
-            .unwrap();
-
         let html = CRAWLER.get_text_with_headers(url, &self.headers);
         let document = Document::from(html.as_str());
 
+        let re = Regex::new(r"cosplayjav.pl/(\d+?)").unwrap();
+        let id = re.captures(url)
+            .unwrap()[1]
+            .to_string()
+            .parse()
+            .unwrap();
         let r#type = {
             let s = document.find(Class("post-aside"))
                 .next()
@@ -269,17 +265,17 @@ impl Site for Cosplayjav {
             match r#type {
                 PostType::Premium | PostType::Wishlist => vec![],
                 _ => {
-                    if let Some(item_parts) = document.find(Class("item-parts")).next() {
-                        let parts_len = item_parts.find(Name("a"))
-                            .into_iter()
-                            .fold(0u8, |acc, _| acc + 1);
+                    let headers = Arc::new(self.headers.clone());
+                    let mut v = vec![];
+                    let mut handles = vec![];
 
-                        let headers = Arc::new(self.headers.clone());
-                        let mut handles = vec![];
-                        for part in 1..=parts_len {
-                            let headers = headers.clone();
+                    for item_part in document.find(Class("item-parts").descendant(Name("a"))) {
+                        let headers = headers.clone();
+                        let url = item_part.attr("href").unwrap().to_owned();
+
+                        if url.ends_with("torrents") { v.push(url); } else {
                             handles.push(spawn(move || {
-                                let download_page = CRAWLER.get_text_with_headers(&format!("{}forPost={}&part={}", urls::DOWNLOAD_PAGE, id, part), &headers);
+                                let download_page = CRAWLER.get_text_with_headers(&url, &headers);
                                 let document = Document::from(download_page.as_str());
 
                                 document.find(Attr("class", "btn btn-primary btn-download"))
@@ -290,12 +286,10 @@ impl Site for Cosplayjav {
                                     .to_owned()
                             }));
                         }
+                    }
 
-                        let mut v = vec![];
-                        for handle in handles { v.push(handle.join().unwrap()); }
-
-                        v
-                    } else { return None; }
+                    for handle in handles { v.push(handle.join().unwrap()); }
+                    v
                 }
             }
         };
