@@ -11,7 +11,7 @@ use select::{
     predicate::{Attr, Class, Name, Predicate},
 };
 // --- custom ---
-use super::{CRAWLER, Post as SitePost, Site};
+use super::{CRAWLER, Post as PostTrait, Site};
 
 #[derive(Debug, Default)]
 struct PostContent {
@@ -77,8 +77,18 @@ impl Display for Post {
     }
 }
 
+impl PostTrait for Post {
+    fn print(&self) { println!("{}", self); }
+
+    fn save_to_db(&self, conn: &postgres::Connection) {
+        unimplemented!()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Japonx {
+    database: bool,
+    verbose: bool,
     thread: u32,
     after: Option<u32>,
     recent: Option<u32>,
@@ -89,6 +99,8 @@ pub struct Japonx {
 impl Japonx {
     pub fn new() -> Japonx {
         Japonx {
+            database: false,
+            verbose: true,
             thread: 1,
             after: None,
             recent: None,
@@ -99,11 +111,16 @@ impl Japonx {
 }
 
 impl Site for Japonx {
+    fn is_database(&self) -> bool { self.database }
+    fn is_verbose(&self) -> bool { self.verbose }
+
+    fn database(&mut self) { self.database = true; }
+    fn silent(&mut self) { self.verbose = false; }
     fn thread(&mut self, num: u32) { self.thread = num; }
     fn after(&mut self, date: u32) { self.after = Some(date); }
     fn recent(&mut self, num: u32) { self.recent = Some(num); }
 
-    fn parse_post(&self, url: &str) -> Option<SitePost> {
+    fn parse_post(&self, url: &str) -> Option<Box<dyn PostTrait + Send>> {
         // --- external ---
         use regex::Regex;
 
@@ -185,13 +202,12 @@ impl Site for Japonx {
             c
         };
 
-        Some(SitePost::Japonx(Post { id, title, intro, cover, content }))
+        Some(Box::new(Post { id, title, intro, cover, content }))
     }
 
-    fn parse_posts_page(&self, html: String) -> (bool, Vec<SitePost>) {
+    fn parse_posts_page(&self, html: String) -> bool {
         // --- std ---
         use std::{
-            mem::swap,
             sync::Arc,
             thread::spawn,
         };
@@ -199,7 +215,6 @@ impl Site for Japonx {
         let japonx = Arc::new(self.clone());
         let document = Document::from(html.as_str());
         let mut handles = vec![];
-        let mut posts = vec![];
 
         for (i, work) in document.find(Attr("id", "works").descendant(Name("li"))).enumerate() {
             let url = work.find(Name("a"))
@@ -212,33 +227,25 @@ impl Site for Japonx {
             {
                 let japonx = japonx.clone();
                 handles.push(spawn(move || japonx.parse_post(&format!("https://www.japonx.vip{}", url))));
-
-                if handles.len() as u32 == self.thread {
-                    let mut tmp_handles = vec![];
-                    swap(&mut handles, &mut tmp_handles);
-
-                    <Japonx as Site>::collect_posts(tmp_handles, &mut posts);
-                }
+                if handles.len() as u32 == self.thread { self.collect_posts(&mut handles); }
             }
 
             if let Some(recent) = self.recent {
                 if i as u32 + 1 == recent {
-                    <Japonx as Site>::collect_posts(handles, &mut posts);
-                    return (true, posts);
+                    self.collect_posts(&mut handles);
+                    return true;
                 }
             }
         }
 
-        <Japonx as Site>::collect_posts(handles, &mut posts);
-        (false, posts)
+        self.collect_posts(&mut handles);
+        false
     }
 
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {
         for page_num in 1..last_page {
             let html = CRAWLER.get_text(&format!("{}{}", url, page_num));
-            let (stop, _posts) = self.parse_posts_page(html);
-
-            if stop { return; }
+            if self.parse_posts_page(html) { return; }
         }
     }
 

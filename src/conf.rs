@@ -2,11 +2,13 @@
 use std::{
     fs::{File, create_dir},
     path::Path,
-    sync::Mutex,
 };
 
-#[derive(Serialize, Deserialize)]
-pub struct Conf { pub proxy: Option<String> }
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub struct Conf {
+    pub proxy: Option<String>,
+    pub database: Option<String>
+}
 
 impl Conf {
     pub fn path() -> String {
@@ -35,6 +37,4 @@ impl Conf {
     pub fn save_to_json_file(&self) { serde_json::to_writer_pretty(&mut File::create(&Conf::path()).unwrap(), self).unwrap() }
 }
 
-impl Default for Conf { fn default() -> Conf { Conf { proxy: None } } }
-
-lazy_static! { pub static ref CONF: Mutex<Conf> = Mutex::new(Conf::load_from_json_file()); }
+lazy_static! { pub static ref CONF: Conf = Conf::load_from_json_file(); }

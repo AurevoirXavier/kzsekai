@@ -1,12 +1,8 @@
 pub mod cosplayjav_pl;
 pub mod japonx_vip;
 
-// --- std ---
-use std::{
-    fmt::{Formatter, Display, self},
-    thread::JoinHandle,
-};
 // --- external ---
+use postgres::Connection;
 use reqwest::{
     Client, ClientBuilder,
     header::HeaderMap,
@@ -30,10 +26,10 @@ impl Crawler {
 
     fn new() -> Crawler { Crawler { request: Crawler::default_builder().build().unwrap() } }
 
-    pub fn new_with_proxy(address: &str) -> Self {
+    pub fn new_with_proxy(url: &str) -> Self {
         Crawler {
             request: Crawler::default_builder()
-                .proxy(reqwest::Proxy::http(address).unwrap())
+                .proxy(reqwest::Proxy::http(url).unwrap())
                 .build()
                 .unwrap()
         }
@@ -98,43 +94,48 @@ impl Crawler {
     }
 }
 
-lazy_static! { static ref CRAWLER: Crawler = if let Some(ref address) = CONF.lock().unwrap().proxy { Crawler::new_with_proxy(address) } else { Crawler::new() };}
+lazy_static! { static ref CRAWLER: Crawler = if let Some(ref url) = CONF.proxy { Crawler::new_with_proxy(url) } else { Crawler::new() };}
 
-pub enum Post {
-    Cosplayjav(cosplayjav_pl::Post),
-    Japonx(japonx_vip::Post),
-}
-
-impl Display for Post {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Post::Cosplayjav(post) => write!(f, "\n🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉\n\n{}", post),
-            Post::Japonx(post) => write!(f, "\n🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉\n\n{}", post),
-        }
+pub trait Post {
+    fn print(&self);
+    fn print_pretty(&self) {
+        println!("\n🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉 🎉\n");
+        self.print();
     }
+
+    fn save_to_db(&self, conn: &Connection);
 }
 
 pub trait Site {
-    // conf
+    // get
+    fn is_database(&self) -> bool;
+    fn is_verbose(&self) -> bool;
+
+    // set
+    fn database(&mut self);
+    fn silent(&mut self);
     fn thread(&mut self, num: u32);
     fn after(&mut self, date: u32);
     fn recent(&mut self, num: u32);
 
     // collect
-    fn collect_posts(handles: Vec<JoinHandle<Option<Post>>>, posts: &mut Vec<Post>)
-        where Self: Sized
-    {
-        for handle in handles {
+    fn collect_posts(&self, handles: &mut Vec<std::thread::JoinHandle<Option<Box<dyn Post + Send>>>>) {
+        while let Some(handle) = handles.pop() {
             if let Some(post) = handle.join().unwrap() {
-                println!("{}", post);
-                posts.push(post);
+                if self.is_verbose() { post.print_pretty(); }
+                if self.is_database() {
+                    let conn = if let Some(ref url) = crate::conf::CONF.database {
+                        Connection::connect(url.as_str(), postgres::TlsMode::None).unwrap()
+                    } else { panic!("please config database first"); };
+                    post.save_to_db(&conn);
+                }
             }
         }
     }
 
     // fetch and parse
-    fn parse_post(&self, url: &str) -> Option<Post>;
-    fn parse_posts_page(&self, html: String) -> (bool, Vec<Post>);
+    fn parse_post(&self, url: &str) -> Option<Box<dyn Post + Send>>;
+    fn parse_posts_page(&self, html: String) -> bool;
     fn fetch_posts_pages(&self, last_page: u32, url: &str);
 
     // fetch

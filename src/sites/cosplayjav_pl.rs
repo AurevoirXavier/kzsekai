@@ -16,7 +16,7 @@ use select::{
     predicate::{Attr, Class, Name, Predicate},
 };
 // --- custom ---
-use super::{CRAWLER, Post as SitePost, Site};
+use super::{CRAWLER, Post as PostTrait, Site};
 
 #[derive(Debug, Default)]
 struct Content {
@@ -37,6 +37,20 @@ enum PostType {
     OnlyImages,
     Premium,
     Wishlist,
+}
+
+impl PostType {
+    fn to_i16(&self) -> i16 {
+        // --- custom ---
+        use self::PostType::*;
+
+        match self {
+            CosplayVideos => 0,
+            OnlyImages => 1,
+            Premium => 2,
+            Wishlist => 3,
+        }
+    }
 }
 
 impl Display for PostType {
@@ -112,8 +126,54 @@ impl Display for Post {
     }
 }
 
+impl PostTrait for Post {
+    fn print(&self) { println!("{}", self); }
+
+    fn save_to_db(&self, conn: &postgres::Connection) {
+        conn.execute(
+            "INSERT INTO cosplayjav (\
+                post_id,\
+                post_likes,\
+                post_title,\
+                post_cover,\
+                post_parts,\
+                post_type,\
+                content_id,\
+                content_title,\
+                conten_alternative_title,\
+                content_company,\
+                content_actress,\
+                contetn_in_premium_section_to,\
+                content_anmie_or_game_series,\
+                content_character_cosplay,\
+                content_info\
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)\
+                ON CONFLICT (post_id) DO NOTHING;",
+            &[
+                &(self.id as i32),
+                &(self.likes as i32),
+                &self.title,
+                &self.cover,
+                &self.parts,
+                &(self.r#type.to_i16()),
+                &self.content.id,
+                &self.content.title,
+                &self.content.alternative_title,
+                &self.content.company,
+                &self.content.actress,
+                &self.content.in_premium_section_to,
+                &self.content.anmie_or_game_series,
+                &self.content.character_cosplay,
+                &self.content.info,
+            ],
+        ).unwrap();
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Cosplayjav {
+    database: bool,
+    verbose: bool,
     thread: u32,
     after: Option<u32>,
     recent: Option<u32>,
@@ -127,14 +187,11 @@ impl Cosplayjav {
         let headers = if CRAWLER.get_status(urls::HOMEPAGE) == 503 {
             // --- external ---
             use cloudflare_bypasser::Bypasser;
-            // --- custom ---
-            use crate::conf::CONF;
 
             let mut bypasser = Bypasser::new().user_agent("Mozilla/5.0");
-            let conf = CONF.lock().unwrap();
-            if let Some(ref proxy) = conf.proxy { bypasser = bypasser.proxy(proxy); }
+            if let Some(ref proxy) = crate::conf::CONF.proxy { bypasser = bypasser.proxy(proxy); }
 
-            println!("We're trying to bypass cloudflare's anti-bot page, it might takes few seconds...");
+            println!("We're trying to bypass the cloudflare's anti-bot page, it might takes few seconds...");
             let mut h = HeaderMap::new();
             loop {
                 if let Ok((c, ua)) = bypasser.bypass(urls::HOMEPAGE) {
@@ -148,6 +205,8 @@ impl Cosplayjav {
         } else { HeaderMap::new() };
 
         Cosplayjav {
+            database: false,
+            verbose: true,
             thread: 1,
             after: None,
             recent: None,
@@ -159,11 +218,16 @@ impl Cosplayjav {
 }
 
 impl Site for Cosplayjav {
+    fn is_database(&self) -> bool { self.database }
+    fn is_verbose(&self) -> bool { self.verbose }
+
+    fn database(&mut self) { self.database = true; }
+    fn silent(&mut self) { self.verbose = false; }
     fn thread(&mut self, num: u32) { self.thread = num; }
     fn after(&mut self, date: u32) { self.after = Some(date); }
     fn recent(&mut self, num: u32) { self.recent = Some(num); }
 
-    fn parse_post(&self, url: &str) -> Option<SitePost> {
+    fn parse_post(&self, url: &str) -> Option<Box<dyn PostTrait + Send>> {
         // --- external ---
         use regex::Regex;
 
@@ -299,13 +363,12 @@ impl Site for Cosplayjav {
             c
         };
 
-        Some(SitePost::Cosplayjav(Post { id, likes, title, cover, parts, r#type, content }))
+        Some(Box::new(Post { id, likes, title, cover, parts, r#type, content }))
     }
 
-    fn parse_posts_page(&self, html: String) -> (bool, Vec<SitePost>) {
+    fn parse_posts_page(&self, html: String) -> bool {
         // --- std ---
         use std::{
-            mem::swap,
             sync::Arc,
             thread::spawn,
         };
@@ -313,7 +376,6 @@ impl Site for Cosplayjav {
         let cosplayjav = Arc::new(self.clone());
         let document = Document::from(html.as_str());
         let mut handles = vec![];
-        let mut posts = vec![];
 
         for (i, article) in document.find(Attr("id", "main-section").descendant(Name("article"))).enumerate() {
             if let Some(after) = self.after {
@@ -345,8 +407,8 @@ impl Site for Cosplayjav {
                 };
 
                 if after > date {
-                    <Cosplayjav as Site>::collect_posts(handles, &mut posts);
-                    return (true, posts);
+                    self.collect_posts(&mut handles);
+                    return true;
                 }
             }
 
@@ -360,32 +422,25 @@ impl Site for Cosplayjav {
             {
                 let cosplayjav = cosplayjav.clone();
                 handles.push(spawn(move || cosplayjav.parse_post(&url)));
-
-                if handles.len() as u32 == self.thread {
-                    let mut tmp_handles = vec![];
-                    swap(&mut handles, &mut tmp_handles);
-                    <Cosplayjav as Site>::collect_posts(tmp_handles, &mut posts);
-                }
+                if handles.len() as u32 == self.thread { self.collect_posts(&mut handles); }
             }
 
             if let Some(recent) = self.recent {
                 if i as u32 + 1 == recent {
-                    <Cosplayjav as Site>::collect_posts(handles, &mut posts);
-                    return (true, posts);
+                    self.collect_posts(&mut handles);
+                    return true;
                 }
             }
         }
 
-        <Cosplayjav as Site>::collect_posts(handles, &mut posts);
-        (false, posts)
+        self.collect_posts(&mut handles);
+        false
     }
 
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {
         for page_num in 1..last_page {
             let html = CRAWLER.get_text_with_headers(&format!("{}{}", url, page_num), &self.headers);
-            let (stop, _posts) = self.parse_posts_page(html);
-
-            if stop { return; }
+            if self.parse_posts_page(html) { return; }
         }
     }
 
