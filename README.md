@@ -1,4 +1,4 @@
-## Intro
+#### Intro
 
 Just Sexy.
 
@@ -11,6 +11,10 @@ Just Sexy.
    - [OS X Mojave (10.14.3 18D42)](https://github.com/AurevoirXavier/xmly-exporter/releases/download/1.0/xmly-exporter)
    - [Windows](#): Not yet
    - [Linux](#): Not yet
+   
+ #### Require
+ 
+ - **Node.js**: to pass the cloudflare's anti-bot test.
 
 #### Usage
 
