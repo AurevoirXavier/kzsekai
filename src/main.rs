@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate cloudflare_bypasser;
 extern crate colored;
 #[macro_use]
 extern crate lazy_static;
