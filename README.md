@@ -6,7 +6,7 @@ Just Sexy.
 
 1.  Complie from source (recommend)
    - `git clone https://github.com/AurevoirXavier/sexy.git`
-   - `cargo build --release` (rust version 1.33.0 nightly)
+   - `cargo build --release` (rust version 1.34.0 nightly)
 2.  Download release
    - [OS X Mojave (10.14.3 18D42)](https://github.com/AurevoirXavier/xmly-exporter/releases/download/1.0/xmly-exporter)
    - [Windows](#): Not yet
