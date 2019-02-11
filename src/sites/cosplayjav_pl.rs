@@ -188,7 +188,7 @@ impl Cosplayjav {
             use cloudflare_bypasser::Bypasser;
 
             let mut bypasser = Bypasser::new()
-                .retry(100)
+                .retry(10000)
                 .user_agent("Mozilla/5.0");
             if let Some(ref proxy) = crate::conf::CONF.proxy { bypasser = bypasser.proxy(proxy); }
 
@@ -235,7 +235,7 @@ impl Site for Cosplayjav {
         let html = CRAWLER.get_text_with_headers(url, &self.headers);
         let document = Document::from(html.as_str());
 
-        let re = Regex::new(r"cosplayjav.pl/(\d+?)").unwrap();
+        let re = Regex::new(r"cosplayjav.pl/(\d+)").unwrap();
         let id = re.captures(url)
             .unwrap()[1]
             .to_string()
