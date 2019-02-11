@@ -7,7 +7,10 @@ use std::{
     thread::JoinHandle,
 };
 // --- external ---
-use reqwest::{Client, ClientBuilder};
+use reqwest::{
+    Client, ClientBuilder,
+    header::HeaderMap,
+};
 
 struct Crawler { request: Client }
 
@@ -36,9 +39,29 @@ impl Crawler {
 
     fn get_text(&self, url: &str) -> String {
         loop {
-            match self.request.get(url).send() {
-                Ok(mut resp) => if let Ok(text) = resp.text() { return text; } else { continue; }
-                Err(_) => continue,
+            match self.request
+                .get(url)
+                .send() {
+                Ok(mut resp) => match resp.text() {
+                    Ok(text) => return text,
+                    Err(e) => println!("At get_text() text(), {:?}", e),
+                }
+                Err(e) => println!("At get_text() send(), {:?}", e),
+            }
+        }
+    }
+
+    fn get_text_with_headers(&self, url: &str, headers: HeaderMap) -> String {
+        loop {
+            match self.request
+                .get(url)
+                .headers(headers)
+                .send() {
+                Ok(mut resp) => match resp.text() {
+                    Ok(text) => return text,
+                    Err(e) => println!("At get_text_with_headers() text(), {:?}", e),
+                }
+                Err(e) => println!("At get_text_with_headers() send(), {:?}", e),
             }
         }
     }
@@ -49,9 +72,14 @@ impl Crawler {
 
         loop {
             let mut v = vec![];
-            match self.request.get(url).send() {
-                Ok(mut resp) => if let Ok(_) = resp.read_to_end(&mut v) { return v; } else { continue; }
-                Err(_) => continue,
+            match self.request
+                .get(url)
+                .send() {
+                Ok(mut resp) => match resp.read_to_end(&mut v) {
+                    Ok(_) => return v,
+                    Err(e) => println!("At get_bytes() read_to_end(), {:?}", e),
+                }
+                Err(_) => println!("At get_bytes() send(), {:?}", e),
             }
         }
     }
