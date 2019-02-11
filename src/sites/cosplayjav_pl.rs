@@ -187,7 +187,9 @@ impl Cosplayjav {
             // --- external ---
             use cloudflare_bypasser::Bypasser;
 
-            let mut bypasser = Bypasser::new().user_agent("Mozilla/5.0");
+            let mut bypasser = Bypasser::new()
+                .retry(100)
+                .user_agent("Mozilla/5.0");
             if let Some(ref proxy) = crate::conf::CONF.proxy { bypasser = bypasser.proxy(proxy); }
 
             println!("We're trying to bypass the cloudflare's anti-bot page, it might takes few seconds...");
