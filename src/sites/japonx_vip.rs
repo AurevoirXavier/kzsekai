@@ -205,7 +205,7 @@ impl Site for Japonx {
         Some(Box::new(Post { id, title, intro, cover, content }))
     }
 
-    fn parse_posts_page(&self, html: String) -> bool {
+    fn parse_posts_page(&self, document: Document) -> bool {
         // --- std ---
         use std::{
             sync::Arc,
@@ -213,7 +213,6 @@ impl Site for Japonx {
         };
 
         let japonx = Arc::new(self.clone());
-        let document = Document::from(html.as_str());
         let mut handles = vec![];
 
         for (i, work) in document.find(Attr("id", "works").descendant(Name("li"))).enumerate() {
@@ -245,7 +244,7 @@ impl Site for Japonx {
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {
         for page_num in 1..last_page {
             let html = CRAWLER.get_text(&format!("{}{}", url, page_num));
-            if self.parse_posts_page(html) { return; }
+            if self.parse_posts_page(Document::from(html.as_str())) { return; }
         }
     }
 

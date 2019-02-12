@@ -218,6 +218,14 @@ impl Cosplayjav {
             headers,
         }
     }
+
+    fn check_empty_page(url: &str, headers: &HeaderMap) -> Document {
+        let mut html;
+        loop {
+            html = CRAWLER.get_text_with_headers(url, headers);
+            if html.contains(r#"<html class="no-js" lang="en-US">"#) { return Document::from(html.as_str()); }
+        }
+    }
 }
 
 impl Site for Cosplayjav {
@@ -234,17 +242,7 @@ impl Site for Cosplayjav {
         // --- external ---
         use regex::Regex;
 
-        let document;
-        loop {
-            let html = CRAWLER.get_text_with_headers(url, &self.headers);
-            let html = html.trim();
-
-            if !html.is_empty() {
-                document = Document::from(html);
-                break;
-            }
-        }
-
+        let document = Cosplayjav::check_empty_page(url, &self.headers);
         let re = Regex::new(r"cosplayjav.pl/(\d+)").unwrap();
         let id = re.captures(url)
             .unwrap()[1]
@@ -286,17 +284,7 @@ impl Site for Cosplayjav {
                         if url.ends_with("torrents") { v.push(url); } else if url.ends_with("alternative") { continue; } else {
                             let headers = headers.clone();
                             handles.push(spawn(move || {
-                                let document;
-                                loop {
-                                    let download_page = CRAWLER.get_text_with_headers(&url, &headers);
-                                    let download_page = download_page.trim();
-
-                                    if !download_page.is_empty() {
-                                        document = Document::from(download_page);
-                                        break;
-                                    }
-                                }
-
+                                let document = Cosplayjav::check_empty_page(&url, &headers);
                                 document.find(Attr("class", "btn btn-primary btn-download"))
                                     .next()
                                     .unwrap()
@@ -380,7 +368,7 @@ impl Site for Cosplayjav {
         Some(Box::new(Post { id, likes, title, cover, parts, r#type, content }))
     }
 
-    fn parse_posts_page(&self, html: String) -> bool {
+    fn parse_posts_page(&self, document: Document) -> bool {
         // --- std ---
         use std::{
             sync::Arc,
@@ -388,7 +376,6 @@ impl Site for Cosplayjav {
         };
 
         let cosplayjav = Arc::new(self.clone());
-        let document = Document::from(html.as_str());
         let mut handles = vec![];
 
         for (i, article) in document.find(Attr("id", "main-section").descendant(Name("article"))).enumerate() {
@@ -453,29 +440,14 @@ impl Site for Cosplayjav {
 
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {
         for page_num in 1..last_page {
-//            println!("{}", page_num);
-            let mut html;
-            loop {
-                html = CRAWLER.get_text_with_headers(&format!("{}{}", url, page_num), &self.headers);
-                if !html.trim().is_empty() { break; }
-            }
-
-            if self.parse_posts_page(html) { return; }
+            println!("{}", page_num);
+            if self.parse_posts_page(Cosplayjav::check_empty_page(&format!("{}{}", url, page_num), &self.headers)) { return; }
         }
     }
 
     fn fetch_all(&self) {
         let last_page: u32 = {
-            let document;
-            loop {
-                let html = CRAWLER.get_text_with_headers(&format!("{}{}", urls::POSTS_PAGE, 1), &self.headers);
-                let html = html.trim();
-                if !html.is_empty() {
-                    document = Document::from(html);
-                    break;
-                }
-            }
-
+            let document = Cosplayjav::check_empty_page(&format!("{}{}", urls::POSTS_PAGE, 1), &self.headers);
             document.find(Attr("id", "pagination-elem"))
                 .next()
                 .unwrap()

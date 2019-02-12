@@ -120,26 +120,26 @@ pub trait Site {
 
     // collect
     fn collect_posts(&self, handles: &mut Vec<std::thread::JoinHandle<Option<Box<dyn Post + Send>>>>) {
-//        let mut i = 0;
+        let mut i = 0;
         while let Some(handle) = handles.pop() {
             if let Some(post) = handle.join().unwrap() {
-                if self.is_verbose() { post.print_pretty(); }
-                if self.is_database() {
-                    let conn = if let Some(ref url) = crate::conf::CONF.database {
-                        Connection::connect(url.as_str(), postgres::TlsMode::None).unwrap()
-                    } else { panic!("please config database first"); };
-                    post.save_to_db(&conn);
-                }
+//                if self.is_verbose() { post.print_pretty(); }
+//                if self.is_database() {
+//                    let conn = if let Some(ref url) = crate::conf::CONF.database {
+//                        Connection::connect(url.as_str(), postgres::TlsMode::None).unwrap()
+//                    } else { panic!("please config database first"); };
+//                    post.save_to_db(&conn);
+//                }
             }
 
-//            i += 1;
-//            println!("{}", i);
+            i += 1;
+            println!("{}", i);
         }
     }
 
     // fetch and parse
     fn parse_post(&self, url: &str) -> Option<Box<dyn Post + Send>>;
-    fn parse_posts_page(&self, html: String) -> bool;
+    fn parse_posts_page(&self, document: select::document::Document) -> bool;
     fn fetch_posts_pages(&self, last_page: u32, url: &str);
 
     // fetch
