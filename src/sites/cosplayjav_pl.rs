@@ -292,7 +292,7 @@ impl Site for Cosplayjav {
                                     let download_page = download_page.trim();
 
                                     if !download_page.is_empty() {
-                                        document = Document::from(download_page.as_str());
+                                        document = Document::from(download_page);
                                         break;
                                     }
                                 }
@@ -471,7 +471,7 @@ impl Site for Cosplayjav {
                 let html = CRAWLER.get_text_with_headers(&format!("{}{}", urls::POSTS_PAGE, 1), &self.headers);
                 let html = html.trim();
                 if !html.is_empty() {
-                    document = Document::from(html.as_str());
+                    document = Document::from(html);
                     break;
                 }
             }
