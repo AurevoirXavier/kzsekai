@@ -330,6 +330,7 @@ impl Site for Cosplayjav {
                     let v: Vec<_> = infos.find(Name("a"))
                         .into_iter()
                         .map(|info| info.text())
+                        .filter(|info| !info.is_empty())
                         .collect();
 
                     if v.is_empty() {
@@ -443,6 +444,7 @@ impl Site for Cosplayjav {
 
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {
         for page_num in 1..last_page {
+//            println!("{}", page_num);
             let html = CRAWLER.get_text_with_headers(&format!("{}{}", url, page_num), &self.headers);
             if self.parse_posts_page(html) { return; }
         }
