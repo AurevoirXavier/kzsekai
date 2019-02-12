@@ -440,7 +440,7 @@ impl Site for Cosplayjav {
 
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {
         for page_num in 1..last_page {
-            println!("{}", page_num);
+//            println!("{}", page_num);
             if self.parse_posts_page(Cosplayjav::check_empty_page(&format!("{}{}", url, page_num), &self.headers)) { return; }
         }
     }
