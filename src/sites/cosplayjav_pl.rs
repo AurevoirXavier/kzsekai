@@ -291,7 +291,7 @@ impl Site for Cosplayjav {
                     }
 
                     for handle in handles { v.push(handle.join().unwrap()); }
-                    v
+                    if v.is_empty() { return None; } else { v }
                 }
             }
         };
