@@ -19,7 +19,11 @@ fn main() {
     // --- external ---
     use clap::{Arg, App, SubCommand};
     // --- custom ---
-    use sites::Site;
+    use sites::{
+        Site,
+        cosplayjav_pl::Cosplayjav,
+        japonx_vip::Japonx,
+    };
 
     let matches = App::new("sexy")
         .version("v0.1.2-beta version")
@@ -51,7 +55,8 @@ fn main() {
             .long("site")
             .value_name("NAME")
             .possible_values(&["cosplayjav", "japonx"])
-            .help("The site that you want"))
+            .help("The site that you want")
+            .conflicts_with("parse"))
         .arg(Arg::with_name("fetch")
             .short("f")
             .long("fetch")
@@ -64,36 +69,35 @@ fn main() {
             .value_name("NUM")
             .help("Specify crawler's thread NUM, the max thread amount depends on the page's posts amount")
             .conflicts_with("parse")
-            .requires_all(&["site", "fetch"]))
+            .requires_all(&["fetch", "site"]))
         .arg(Arg::with_name("after")
             .long("after")
             .value_name("DATE")
             .help("Fetch the posts whose date after specify DATE, format: [year][month][day] 20190101")
             .conflicts_with("parse")
-            .requires_all(&["site", "fetch"]))
+            .requires_all(&["fetch", "site"]))
         .arg(Arg::with_name("recent")
             .long("recent")
             .value_name("NUM")
             .help("Fetch recent specify NUM posts")
             .conflicts_with("parse")
-            .requires_all(&["site", "fetch"]))
+            .requires_all(&["fetch", "site"]))
         .arg(Arg::with_name("database")
             .long("database")
             .help("Save to database")
             .conflicts_with("parse")
-            .requires_all(&["site", "fetch"]))
+            .requires_all(&["fetch", "site"]))
         .arg(Arg::with_name("silent")
             .long("silent")
             .help("Capture the output")
             .conflicts_with("parse")
-            .requires_all(&["site", "fetch"]))
+            .requires_all(&["fetch", "site"]))
         .arg(Arg::with_name("parse")
             .short("p")
             .long("parse")
             .value_name("URL")
             .help("Specify the post's url")
-            .conflicts_with("fetch")
-            .requires("site"))
+            .conflicts_with_all(&["fetch", "site"]))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("config") {
@@ -120,25 +124,30 @@ fn main() {
         return;
     }
 
-    let mut site: Box<dyn Site> = if let Some(site) = matches.value_of("site") {
-        match site {
-            "cosplayjav" => Box::new(sites::cosplayjav_pl::Cosplayjav::new()),
-            "japonx" => Box::new(sites::japonx_vip::Japonx::new()),
-            site => panic!("Not support {}", site)
-        }
-    } else {
-        println!("{}", matches.usage());
-        return;
-    };
-
     if let Some(url) = matches.value_of("parse") {
-        if let Some(post) = site.parse_post(url) {
-            post.print_pretty();
-            return;
-        } else { println!("Invalid post"); }
+        match url {
+            _ if url.contains("cosplayjav") => if let Some(post) = Cosplayjav::new().parse_post(url) { post.print_pretty(); } else {
+                println!("invalid post");
+                return;
+            }
+            _ if url.contains("japonx") => if let Some(post) = Japonx::new().parse_post(url) { post.print_pretty(); } else {
+                println!("invalid post");
+                return;
+            }
+            _ => {
+                println!("not support site");
+                return;
+            }
+        }
     }
 
     if matches.is_present("fetch") {
+        let mut site: Box<dyn Site> = match matches.value_of("site").unwrap() {
+            "cosplayjav" => Box::new(Cosplayjav::new()),
+            "japonx" => Box::new(Japonx::new()),
+            _ => unreachable!()
+        };
+
         if matches.is_present("database") { site.database(); }
         if matches.is_present("silent") { site.silent(); }
         if let Some(num) = matches.value_of("thread") { site.thread(num.parse().unwrap()); }
