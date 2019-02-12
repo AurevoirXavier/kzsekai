@@ -275,7 +275,8 @@ impl Site for Cosplayjav {
                         let headers = headers.clone();
                         let url = item_part.attr("href").unwrap().to_owned();
 
-                        if url.ends_with("torrents") { v.push(url); } else {
+
+                        if url.ends_with("torrents") { v.push(url); } else if url.ends_with("alternative") { continue; } else {
                             handles.push(spawn(move || {
                                 let download_page = CRAWLER.get_text_with_headers(&url, &headers);
                                 let document = Document::from(download_page.as_str());
