@@ -6,8 +6,9 @@ use std::{
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct Conf {
+    pub cosplayjav_bypass_retry: Option<u32>,
     pub proxy: Option<String>,
-    pub database: Option<String>
+    pub database: Option<String>,
 }
 
 impl Conf {

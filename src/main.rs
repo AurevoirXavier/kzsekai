@@ -15,13 +15,12 @@ extern crate serde_json;
 mod conf;
 mod sites;
 
-// --- external ---
-use clap::{Arg, App, SubCommand};
-// --- custom ---
-use conf::CONF;
-use sites::Site;
-
 fn main() {
+    // --- external ---
+    use clap::{Arg, App, SubCommand};
+    // --- custom ---
+    use sites::Site;
+
     let matches = App::new("sexy")
         .version("v0.1.2-beta version")
         .author("Xavier Lau <c.estlavie@icloud.com>")
@@ -31,7 +30,7 @@ fn main() {
             .arg(Arg::with_name("show")
                 .long("show")
                 .help("Show configurations")
-                .conflicts_with_all(&["proxy", "database"]))
+                .conflicts_with_all(&["database", "proxy", "cosplayjav_bypass_retry"]))
             .arg(Arg::with_name("database")
                 .long("database")
                 .value_name("URL")
@@ -41,6 +40,11 @@ fn main() {
                 .long("proxy")
                 .value_name("URL")
                 .help("Use proxy with specify URL, format: [URL][PORT] http://127.0.0.1:1080")
+                .conflicts_with("show"))
+            .arg(Arg::with_name("cosplayjav_bypass_retry")
+                .long("cosplayjav_bypass_retry")
+                .value_name("NUM")
+                .help("Specify the bypass retry times")
                 .conflicts_with("show")))
         .arg(Arg::with_name("site")
             .short("s")
@@ -93,7 +97,7 @@ fn main() {
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("config") {
-        let mut conf = CONF.clone();
+        let mut conf = conf::CONF.clone();
 
         if matches.is_present("show") {
             println!("Conf: {}", serde_json::to_string_pretty(&conf).unwrap());

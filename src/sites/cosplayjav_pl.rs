@@ -186,11 +186,13 @@ impl Cosplayjav {
         let headers = if CRAWLER.get_status(urls::HOMEPAGE) == 503 {
             // --- external ---
             use cloudflare_bypasser::Bypasser;
+            // --- custom ---
+            use crate::conf::CONF;
 
             let mut bypasser = Bypasser::new()
-                .retry(100)
+                .retry(if let Some(num) = CONF.cosplayjav_bypass_retry { num } else { 10 })
                 .user_agent("Mozilla/5.0");
-            if let Some(ref proxy) = crate::conf::CONF.proxy { bypasser = bypasser.proxy(proxy); }
+            if let Some(ref proxy) = CONF.proxy { bypasser = bypasser.proxy(proxy); }
 
             println!("We're trying to bypass the cloudflare's anti-bot page, it might takes few seconds...");
             let mut h = HeaderMap::new();
