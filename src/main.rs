@@ -112,6 +112,10 @@ fn main() {
             if url.is_empty() { conf.database = None; } else { conf.database = Some(url.to_owned()); }
             conf.save_to_json_file();
         }
+        if let Some(num) = matches.value_of("cosplayjav_bypass_retry") {
+            if num.is_empty() { conf.cosplayjav_bypass_retry = None; } else { conf.cosplayjav_bypass_retry = Some(num.parse().unwrap()); }
+            conf.save_to_json_file();
+        }
 
         return;
     }
