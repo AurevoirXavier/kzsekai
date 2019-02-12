@@ -272,11 +272,9 @@ impl Site for Cosplayjav {
                     let mut handles = vec![];
 
                     for item_part in document.find(Class("item-parts").descendant(Name("a"))) {
-                        let headers = headers.clone();
                         let url = item_part.attr("href").unwrap().to_owned();
-
-
                         if url.ends_with("torrents") { v.push(url); } else if url.ends_with("alternative") { continue; } else {
+                            let headers = headers.clone();
                             handles.push(spawn(move || {
                                 let download_page = CRAWLER.get_text_with_headers(&url, &headers);
                                 let document = Document::from(download_page.as_str());
