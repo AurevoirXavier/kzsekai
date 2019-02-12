@@ -232,6 +232,7 @@ impl Site for Cosplayjav {
         // --- external ---
         use regex::Regex;
 
+        println!("{}", url);
         let html = CRAWLER.get_text_with_headers(url, &self.headers);
         let document = Document::from(html.as_str());
 
