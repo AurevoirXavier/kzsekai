@@ -120,7 +120,7 @@ pub trait Site {
 
     // collect
     fn collect_posts(&self, handles: &mut Vec<std::thread::JoinHandle<Option<Box<dyn Post + Send>>>>) {
-        let mut i = 0;
+//        let mut i = 0;
         while let Some(handle) = handles.pop() {
             if let Some(post) = handle.join().unwrap() {
                 if self.is_verbose() { post.print_pretty(); }
