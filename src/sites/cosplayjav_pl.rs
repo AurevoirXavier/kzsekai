@@ -234,8 +234,16 @@ impl Site for Cosplayjav {
         // --- external ---
         use regex::Regex;
 
-        let html = CRAWLER.get_text_with_headers(url, &self.headers);
-        let document = Document::from(html.as_str());
+        let document;
+        loop {
+            let html = CRAWLER.get_text_with_headers(url, &self.headers);
+            let html = html.trim();
+
+            if !html.is_empty() {
+                document = Document::from(html);
+                break;
+            }
+        }
 
         let re = Regex::new(r"cosplayjav.pl/(\d+)").unwrap();
         let id = re.captures(url)
@@ -278,22 +286,23 @@ impl Site for Cosplayjav {
                         if url.ends_with("torrents") { v.push(url); } else if url.ends_with("alternative") { continue; } else {
                             let headers = headers.clone();
                             handles.push(spawn(move || {
-                                let href;
+                                let document;
                                 loop {
                                     let download_page = CRAWLER.get_text_with_headers(&url, &headers);
-                                    let document = Document::from(download_page.as_str());
+                                    let download_page = download_page.trim();
 
-                                    if let Some(a) = document.find(Attr("class", "btn btn-primary btn-download")).next() {
-                                        href = a
-                                            .attr("href")
-                                            .unwrap()
-                                            .to_owned();
-
+                                    if !download_page.is_empty() {
+                                        document = Document::from(download_page.as_str());
                                         break;
                                     }
                                 }
 
-                                href
+                                document.find(Attr("class", "btn btn-primary btn-download"))
+                                    .next()
+                                    .unwrap()
+                                    .attr("href")
+                                    .unwrap()
+                                    .to_owned()
                             }));
                         }
                     }
@@ -445,15 +454,27 @@ impl Site for Cosplayjav {
     fn fetch_posts_pages(&self, last_page: u32, url: &str) {
         for page_num in 1..last_page {
 //            println!("{}", page_num);
-            let html = CRAWLER.get_text_with_headers(&format!("{}{}", url, page_num), &self.headers);
+            let mut html;
+            loop {
+                html = CRAWLER.get_text_with_headers(&format!("{}{}", url, page_num), &self.headers);
+                if !html.trim().is_empty() { break; }
+            }
+
             if self.parse_posts_page(html) { return; }
         }
     }
 
     fn fetch_all(&self) {
         let last_page: u32 = {
-            let html = CRAWLER.get_text_with_headers(&format!("{}{}", urls::POSTS_PAGE, 1), &self.headers);
-            let document = Document::from(html.as_str());
+            let document;
+            loop {
+                let html = CRAWLER.get_text_with_headers(&format!("{}{}", urls::POSTS_PAGE, 1), &self.headers);
+                let html = html.trim();
+                if !html.is_empty() {
+                    document = Document::from(html.as_str());
+                    break;
+                }
+            }
 
             document.find(Attr("id", "pagination-elem"))
                 .next()
