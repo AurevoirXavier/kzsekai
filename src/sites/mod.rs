@@ -122,13 +122,13 @@ pub trait Site {
     fn collect_posts(&self, handles: &mut Vec<std::thread::JoinHandle<Option<Box<dyn Post + Send>>>>) {
         while let Some(handle) = handles.pop() {
             if let Some(post) = handle.join().unwrap() {
-//                if self.is_verbose() { post.print_pretty(); }
-//                if self.is_database() {
-//                    let conn = if let Some(ref url) = crate::conf::CONF.database {
-//                        Connection::connect(url.as_str(), postgres::TlsMode::None).unwrap()
-//                    } else { panic!("please config database first"); };
-//                    post.save_to_db(&conn);
-//                }
+                if self.is_verbose() { post.print_pretty(); }
+                if self.is_database() {
+                    let conn = if let Some(ref url) = crate::conf::CONF.database {
+                        Connection::connect(url.as_str(), postgres::TlsMode::None).unwrap()
+                    } else { panic!("please config database first"); };
+                    post.save_to_db(&conn);
+                }
             }
         }
     }

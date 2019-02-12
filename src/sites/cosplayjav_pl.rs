@@ -188,7 +188,7 @@ impl Cosplayjav {
             use cloudflare_bypasser::Bypasser;
 
             let mut bypasser = Bypasser::new()
-                .retry(10000)
+                .retry(10)
                 .user_agent("Mozilla/5.0");
             if let Some(ref proxy) = crate::conf::CONF.proxy { bypasser = bypasser.proxy(proxy); }
 
@@ -232,7 +232,6 @@ impl Site for Cosplayjav {
         // --- external ---
         use regex::Regex;
 
-        println!("{}", url);
         let html = CRAWLER.get_text_with_headers(url, &self.headers);
         let document = Document::from(html.as_str());
 
@@ -277,15 +276,24 @@ impl Site for Cosplayjav {
                         if url.ends_with("torrents") { v.push(url); } else if url.ends_with("alternative") { continue; } else {
                             let headers = headers.clone();
                             handles.push(spawn(move || {
-                                let download_page = CRAWLER.get_text_with_headers(&url, &headers);
-                                let document = Document::from(download_page.as_str());
+                                let href;
+                                loop {
+                                    let download_page = CRAWLER.get_text_with_headers(&url, &headers);
+                                    let download_page = download_page.trim();
+                                    if !download_page.is_empty() {
+                                        let document = Document::from(download_page);
+                                        href = document.find(Attr("class", "btn btn-primary btn-download"))
+                                            .next()
+                                            .unwrap()
+                                            .attr("href")
+                                            .unwrap()
+                                            .to_owned();
 
-                                document.find(Attr("class", "btn btn-primary btn-download"))
-                                    .next()
-                                    .unwrap()
-                                    .attr("href")
-                                    .unwrap()
-                                    .to_owned()
+                                        break;
+                                    }
+                                }
+
+                                href
                             }));
                         }
                     }
