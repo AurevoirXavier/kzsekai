@@ -116,9 +116,9 @@ impl Site for Japonx {
 
     fn database(&mut self) { self.database = true; }
     fn silent(&mut self) { self.verbose = false; }
-    fn thread(&mut self, num: u32) { self.thread = num; }
     fn after(&mut self, date: u32) { self.after = Some(date); }
     fn recent(&mut self, num: u32) { self.recent = Some(num); }
+    fn thread(&mut self, num: u32) { self.thread = num; }
 
     fn parse_post(&self, url: &str) -> Option<Box<dyn PostTrait + Send>> {
         // --- external ---

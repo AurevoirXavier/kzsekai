@@ -15,12 +15,13 @@ extern crate serde_json;
 mod conf;
 mod sites;
 
-fn main() {
-    // --- external ---
-    use clap::{Arg, App, SubCommand};
-    // --- custom ---
-    use sites::Site;
+// --- external ---
+use clap::{Arg, App, SubCommand};
+// --- custom ---
+use conf::CONF;
+use sites::Site;
 
+fn main() {
     let matches = App::new("sexy")
         .version("v0.1.2-beta version")
         .author("Xavier Lau <c.estlavie@icloud.com>")
@@ -92,7 +93,7 @@ fn main() {
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("config") {
-        let mut conf = conf::CONF.clone();
+        let mut conf = CONF.clone();
 
         if matches.is_present("show") {
             println!("Conf: {}", serde_json::to_string_pretty(&conf).unwrap());

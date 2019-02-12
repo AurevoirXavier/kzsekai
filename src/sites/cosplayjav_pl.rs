@@ -188,7 +188,7 @@ impl Cosplayjav {
             use cloudflare_bypasser::Bypasser;
 
             let mut bypasser = Bypasser::new()
-                .retry(10)
+                .retry(100)
                 .user_agent("Mozilla/5.0");
             if let Some(ref proxy) = crate::conf::CONF.proxy { bypasser = bypasser.proxy(proxy); }
 
@@ -224,9 +224,9 @@ impl Site for Cosplayjav {
 
     fn database(&mut self) { self.database = true; }
     fn silent(&mut self) { self.verbose = false; }
-    fn thread(&mut self, num: u32) { self.thread = num; }
     fn after(&mut self, date: u32) { self.after = Some(date); }
     fn recent(&mut self, num: u32) { self.recent = Some(num); }
+    fn thread(&mut self, num: u32) { self.thread = num; }
 
     fn parse_post(&self, url: &str) -> Option<Box<dyn PostTrait + Send>> {
         // --- external ---
@@ -279,12 +279,10 @@ impl Site for Cosplayjav {
                                 let href;
                                 loop {
                                     let download_page = CRAWLER.get_text_with_headers(&url, &headers);
-                                    let download_page = download_page.trim();
-                                    if !download_page.is_empty() {
-                                        let document = Document::from(download_page);
-                                        href = document.find(Attr("class", "btn btn-primary btn-download"))
-                                            .next()
-                                            .unwrap()
+                                    let document = Document::from(download_page.as_str());
+
+                                    if let Some(a) = document.find(Attr("class", "btn btn-primary btn-download")).next() {
+                                        href = a
                                             .attr("href")
                                             .unwrap()
                                             .to_owned();

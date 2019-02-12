@@ -114,9 +114,9 @@ pub trait Site {
     // set
     fn database(&mut self);
     fn silent(&mut self);
-    fn thread(&mut self, num: u32);
     fn after(&mut self, date: u32);
     fn recent(&mut self, num: u32);
+    fn thread(&mut self, num: u32);
 
     // collect
     fn collect_posts(&self, handles: &mut Vec<std::thread::JoinHandle<Option<Box<dyn Post + Send>>>>) {
