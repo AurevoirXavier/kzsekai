@@ -4,6 +4,7 @@ extern crate colored;
 #[macro_use]
 extern crate lazy_static;
 extern crate postgres;
+extern crate piston_window;
 extern crate regex;
 extern crate reqwest;
 extern crate select;
