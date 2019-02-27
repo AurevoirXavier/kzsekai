@@ -15,6 +15,7 @@ extern crate serde_json;
 
 mod conf;
 mod sites;
+mod ui;
 
 fn main() {
     // --- external ---
