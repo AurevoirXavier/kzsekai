@@ -1,6 +1,6 @@
 // --- std ---
 use std::{
-    fs::{File, create_dir},
+    fs::File,
     path::Path,
 };
 
@@ -13,21 +13,11 @@ pub struct Conf {
 
 impl Conf {
     pub fn path() -> String {
-        // --- std ---
-        use std::env::current_exe;
-
-        let dir = format!(
-            "{}/.sexy",
-            current_exe().unwrap()
-                .parent()
-                .unwrap()
-                .to_str()
-                .unwrap()
-        );
-
-        if !Path::new(&dir).is_dir() { create_dir(&dir).unwrap(); }
-
-        format!("{}/conf.json", dir)
+        format!("{}/conf.json", std::env::current_dir()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned())
     }
 
     pub fn load_from_json_file() -> Conf {

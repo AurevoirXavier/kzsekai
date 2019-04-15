@@ -1,21 +1,24 @@
+extern crate clipboard;
 extern crate clap;
 extern crate cloudflare_bypasser;
 extern crate colored;
 #[macro_use]
 extern crate lazy_static;
 extern crate postgres;
-extern crate piston_window;
 extern crate regex;
 extern crate reqwest;
+#[macro_use]
+extern crate rocket;
 extern crate select;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate tempfile;
+
 
 mod conf;
 mod sites;
-mod ui;
 
 fn main() {
     // --- external ---
@@ -31,27 +34,6 @@ fn main() {
         .version("v0.1.2-beta version")
         .author("Xavier Lau <c.estlavie@icloud.com>")
         .about("🎉🎉 Sexy Time 🎉🎉")
-        .subcommand(SubCommand::with_name("config")
-            .about("Configurations of sexy")
-            .arg(Arg::with_name("show")
-                .long("show")
-                .help("Show configurations")
-                .conflicts_with_all(&["database", "proxy", "cosplayjav_bypass_retry"]))
-            .arg(Arg::with_name("database")
-                .long("database")
-                .value_name("URL")
-                .help("Set database URL, format: postgresql://user[:password]@host[:port][/database][?param1=val1[[&param2=val2]...]]")
-                .conflicts_with("show"))
-            .arg(Arg::with_name("proxy")
-                .long("proxy")
-                .value_name("URL")
-                .help("Use proxy with specify URL, format: [URL][PORT] http://127.0.0.1:1080")
-                .conflicts_with("show"))
-            .arg(Arg::with_name("cosplayjav_bypass_retry")
-                .long("cosplayjav_bypass_retry")
-                .value_name("NUM")
-                .help("Specify the bypass retry times")
-                .conflicts_with("show")))
         .arg(Arg::with_name("site")
             .short("s")
             .long("site")
@@ -59,6 +41,9 @@ fn main() {
             .possible_values(&["cosplayjav", "japonx"])
             .help("The site that you want")
             .conflicts_with("parse"))
+        .arg(Arg::with_name("headless")
+            .long("headless")
+            .help("Running in headless mode"))
         .arg(Arg::with_name("fetch")
             .short("f")
             .long("fetch")
@@ -100,6 +85,27 @@ fn main() {
             .value_name("URL")
             .help("Specify the post's url")
             .conflicts_with_all(&["fetch", "site"]))
+        .subcommand(SubCommand::with_name("config")
+            .about("Configurations of sexy")
+            .arg(Arg::with_name("show")
+                .long("show")
+                .help("Show configurations")
+                .conflicts_with_all(&["database", "proxy", "cosplayjav_bypass_retry"]))
+            .arg(Arg::with_name("database")
+                .long("database")
+                .value_name("URL")
+                .help("Set database URL, format: postgresql://user[:password]@host[:port][/database][?param1=val1[[&param2=val2]...]]")
+                .conflicts_with("show"))
+            .arg(Arg::with_name("proxy")
+                .long("proxy")
+                .value_name("URL")
+                .help("Use proxy with specify URL, format: [URL][PORT] http://127.0.0.1:1080")
+                .conflicts_with("show"))
+            .arg(Arg::with_name("cosplayjav_bypass_retry")
+                .long("cosplayjav_bypass_retry")
+                .value_name("NUM")
+                .help("Specify the bypass retry times")
+                .conflicts_with("show")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("config") {
