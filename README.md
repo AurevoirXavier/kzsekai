@@ -6,9 +6,9 @@ Just Sexy.
 
 1.  Complie from source (recommend)
    - `git clone https://github.com/AurevoirXavier/sexy.git`
-   - `cargo build --release` (rust version 1.34.0 nightly)
+   - `cargo build --release` (rust version 1.36.0 nightly)
 2.  Download release
-   - [OS X Mojave (10.14.3 18D42)](https://github.com/AurevoirXavier/xmly-exporter/releases/download/1.0/xmly-exporter)
+   - [OS X Mojave (10.14.3 18D42)]()
    - [Windows](#): Not yet
    - [Linux](#): Not yet
    
@@ -21,7 +21,7 @@ Just Sexy.
 `cargo run --release -- --help` or `sexy --help` or `sexy.exe --help`:
 
 ```text
-sexy 0.1.0 alpha version
+sexy 0.1.3 alpha version
 Xavier Lau <c.estlavie@icloud.com>
 🎉🎉 Sexy Time 🎉🎉
 

@@ -1,4 +1,3 @@
-extern crate clipboard;
 extern crate clap;
 extern crate cloudflare_bypasser;
 extern crate colored;
@@ -104,7 +103,7 @@ fn main() {
             .arg(Arg::with_name("cosplayjav_bypass_retry")
                 .long("cosplayjav_bypass_retry")
                 .value_name("NUM")
-                .help("Specify the bypass retry times")
+                .help("Specify the bypass retry times (0 means infinity)")
                 .conflicts_with("show")))
         .get_matches();
 
