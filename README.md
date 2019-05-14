@@ -8,7 +8,7 @@ Just Sexy.
    - `git clone https://github.com/AurevoirXavier/sexy.git`
    - `cargo build --release` (rust version 1.36.0 nightly)
 2.  Download release
-   - [OS X Mojave (10.14.3 18D42)]()
+   - [OS X Mojave (10.14.3 18D42)](https://github.com/AurevoirXavier/sexy/releases/download/v0.1.3-beta/sexy)
    - [Windows](#): Not yet
    - [Linux](#): Not yet
    
