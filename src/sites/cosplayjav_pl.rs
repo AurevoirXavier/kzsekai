@@ -190,7 +190,7 @@ impl Cosplayjav {
             use crate::conf::CONF;
 
             let mut bypasser = Bypasser::new()
-                .retry(if let Some(num) = CONF.cosplayjav_bypass_retry { num } else { 10 })
+                .retry(if let Some(num) = CONF.cosplayjav_bypass_retry { num } else { 30 })
                 .user_agent("Mozilla/5.0");
             if let Some(ref proxy) = CONF.proxy { bypasser = bypasser.proxy(proxy); }
 
