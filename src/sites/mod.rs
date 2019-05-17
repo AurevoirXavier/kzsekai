@@ -26,15 +26,6 @@ impl Crawler {
 
     fn new() -> Crawler { Crawler { request: Crawler::default_builder().build().unwrap() } }
 
-    pub fn new_with_proxy(url: &str) -> Self {
-        Crawler {
-            request: Crawler::default_builder()
-                .proxy(reqwest::Proxy::http(url).unwrap())
-                .build()
-                .unwrap()
-        }
-    }
-
     fn get_status(&self, url: &str) -> u16 {
         loop {
             match self.request
@@ -90,6 +81,15 @@ impl Crawler {
                 }
                 Err(e) => println!("At get_bytes() send(), {:?}", e),
             }
+        }
+    }
+
+    pub fn new_with_proxy(url: &str) -> Self {
+        Crawler {
+            request: Crawler::default_builder()
+                .proxy(reqwest::Proxy::http(url).unwrap())
+                .build()
+                .unwrap()
         }
     }
 }
