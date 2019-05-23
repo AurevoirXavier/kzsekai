@@ -30,7 +30,7 @@ fn main() {
     };
 
     let matches = App::new("sexy")
-        .version("v0.1.2-beta version")
+        .version("v0.1.3-beta version")
         .author("Xavier Lau <c.estlavie@icloud.com>")
         .about("🎉🎉 Sexy Time 🎉🎉")
         .arg(Arg::with_name("site")
