@@ -7,6 +7,7 @@ import (
     "sexy/cosplayjav/parser"
     "sexy/engine"
     "sexy/fetcher"
+    "sexy/scheduler"
 )
 
 type CosplayJav struct {
@@ -16,9 +17,9 @@ type CosplayJav struct {
 }
 
 const (
-    Host     = "http://cosplayjav.pl"
-    ProxyUrl = "http://127.0.0.1:1087"
-    Thread   = 1
+    Host      = "http://cosplayjav.pl"
+    ProxyUrl  = "http://127.0.0.1:1087"
+    WorkerNum = 30
 )
 
 func NewCosplayJav() *CosplayJav {
@@ -35,7 +36,7 @@ func NewCosplayJav() *CosplayJav {
 func (cosplayJav *CosplayJav) Scrape() {
     var tasks []engine.Task
 
-    for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
+    for pageNum := uint16(1); pageNum < cosplayJav.LastPage; pageNum += 1 {
         var (
             pageUrl = fmt.Sprintf("%s/page/%d", Host, pageNum)
             req, _  = http.NewRequest("GET", pageUrl, nil)
@@ -44,5 +45,9 @@ func (cosplayJav *CosplayJav) Scrape() {
         tasks = append(tasks, task)
     }
 
-    engine.Run(cosplayJav.Fetcher, tasks)
+    var advancedEngine = engine.AdvancedEngine{
+        WorkerNum: WorkerNum,
+        Scheduler: &scheduler.BasicScheduler{},
+    }
+    advancedEngine.Run(cosplayJav.Fetcher, tasks)
 }

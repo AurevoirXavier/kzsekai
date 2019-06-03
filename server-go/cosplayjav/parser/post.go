@@ -7,6 +7,7 @@ import (
     "sexy/engine"
     "sexy/fetcher"
     "strings"
+    "sync"
 )
 
 type Post struct {
@@ -25,12 +26,14 @@ type Post struct {
 
 func ParsePost(doc *goquery.Document, fc *fetcher.Fetcher) engine.ParseResult {
     var (
+        guard sync.Mutex
+
         tasks []engine.Task
-        post  = Post{}
+        post = Post{}
     )
     doc.Find(`.post-description`).Each(func(_ int, s *goquery.Selection) {
         s.Find(`tr`).Each(func(_ int, s *goquery.Selection) {
-            switch k, v := s.Find(`td:nth-child(1)`).Text(), s.Find(`td:nth-child(2)`).Text(); {
+            switch k, v := strings.ToUpper(s.Find(`td:nth-child(1)`).Text()), strings.TrimSpace(s.Find(`td:nth-child(2)`).Text()); {
             case k == "" || v == "":
                 return
             case strings.Contains(k, "ID"):
@@ -47,7 +50,7 @@ func ParsePost(doc *goquery.Document, fc *fetcher.Fetcher) engine.ParseResult {
                 post.AnimeGameSeries = v
             case strings.Contains(k, "CHARACTER"):
                 post.CharacterCosplay = v
-            case strings.HasPrefix(k, "IN") || strings.HasPrefix(k, "in"):
+            case strings.Contains(k, "IN"):
                 post.Info = v
             case strings.Contains(k, "PREMIUM"):
                 post.InPremiumSectionTo = v
@@ -57,16 +60,18 @@ func ParsePost(doc *goquery.Document, fc *fetcher.Fetcher) engine.ParseResult {
         })
 
         s.Find(`.btn.btn-primary`).Each(func(_ int, s *goquery.Selection) {
-            var link, _ = s.Attr("href")
-            if strings.HasPrefix(link, "//") {
-                post.Parts = append(post.Parts, "http:"+link)
-            } else {
-                var req, _ = http.NewRequest("GET", link, nil)
-                tasks = append(tasks, engine.Task{Request: req, ParserFunc: func(doc *goquery.Document) engine.ParseResult { return ParseLink(doc, &post) }})
-            }
+           var link, _ = s.Attr("href")
+           if strings.HasPrefix(link, "//") {
+               post.Parts = append(post.Parts, "http:"+link)
+           } else {
+               var req, _ = http.NewRequest("GET", link, nil)
+               tasks = append(tasks, engine.Task{Request: req, ParserFunc: func(doc *goquery.Document) engine.ParseResult { return ParseLink(doc, &guard, &post) }})
+           }
         })
     })
-    engine.Run(fc, tasks)
+
+    var basicEngine = engine.BasicEngine{}
+    basicEngine.Run(fc, tasks)
 
     return engine.ParseResult{Item: post}
 }
