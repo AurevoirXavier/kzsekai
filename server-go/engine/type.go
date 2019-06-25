@@ -21,6 +21,8 @@ type Task struct {
 }
 
 type Scheduler interface {
-    Add(Task)
-    SetTaskChannel(chan Task)
+    AddTask(Task)
+    AddIdleWorker(chan Task)
+    WorkerChannel() chan Task
+    Run()
 }

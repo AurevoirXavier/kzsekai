@@ -7,7 +7,7 @@ import (
 
 type BasicEngine struct{}
 
-func worker(fc *fetcher.Fetcher, task Task) (ParseResult, error) {
+func work(fc *fetcher.Fetcher, task Task) (ParseResult, error) {
     log.Println("fetching, ", task.Request.URL)
     task.Request.Header.Set("User-Agent", fc.UserAgent)
     var doc, e = fc.FetchDoc(task.Request)
@@ -27,7 +27,7 @@ func (engine *BasicEngine) Run(fc *fetcher.Fetcher, tasks []Task) {
     for len(tasks) > 0 {
         var task = tasks[0]
 
-        var parseResult, e = worker(fc, task)
+        var parseResult, e = work(fc, task)
         if e != nil {
             continue
         }

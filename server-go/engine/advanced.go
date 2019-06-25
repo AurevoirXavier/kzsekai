@@ -11,12 +11,11 @@ type AdvancedEngine struct {
     Scheduler Scheduler
 }
 
-func createWorker(fc *fetcher.Fetcher, in chan Task, out chan ParseResult) {
+func createWorker(fc *fetcher.Fetcher, scheduler Scheduler, in chan Task, out chan ParseResult) {
     go func() {
-        var task Task
         for {
-            task = <-in
-            if parseResult, e := worker(fc, task); e == nil {
+            scheduler.AddIdleWorker(in)
+            if parseResult, e := work(fc, <-in); e == nil {
                 out <- parseResult
             }
         }
@@ -24,19 +23,16 @@ func createWorker(fc *fetcher.Fetcher, in chan Task, out chan ParseResult) {
 }
 
 func (engine *AdvancedEngine) Run(fc *fetcher.Fetcher, tasks []Task) {
-    var (
-        in  = make(chan Task)
-        out = make(chan ParseResult)
-    )
+    var out = make(chan ParseResult)
 
-    engine.Scheduler.SetTaskChannel(in)
+    engine.Scheduler.Run()
 
     for i := 0; i < engine.WorkerNum; i++ {
-        createWorker(fc, in, out)
+        createWorker(fc, engine.Scheduler, engine.Scheduler.WorkerChannel(), out)
     }
 
     for _, task := range tasks {
-        engine.Scheduler.Add(task)
+        engine.Scheduler.AddTask(task)
     }
 
     var parseResult ParseResult
@@ -47,7 +43,7 @@ func (engine *AdvancedEngine) Run(fc *fetcher.Fetcher, tasks []Task) {
         } else {
             for _, task := range parseResult.Tasks {
                 log.Println("got task,", task.Request.URL)
-                engine.Scheduler.Add(task)
+                engine.Scheduler.AddTask(task)
             }
         }
     }

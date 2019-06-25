@@ -47,7 +47,7 @@ func (cosplayJav *CosplayJav) Scrape() {
 
     var advancedEngine = engine.AdvancedEngine{
         WorkerNum: WorkerNum,
-        Scheduler: &scheduler.BasicScheduler{},
+        Scheduler: &scheduler.AdvancedScheduler{},
     }
     advancedEngine.Run(cosplayJav.Fetcher, tasks)
 }
