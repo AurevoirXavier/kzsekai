@@ -8,7 +8,6 @@ import (
     "log"
     "net/http"
     "net/url"
-    "strconv"
 )
 
 type Fetcher struct {
@@ -39,8 +38,6 @@ func (fc *Fetcher) Bypass(host string) {
 }
 
 func (fc *Fetcher) FetchDoc(req *http.Request) (*goquery.Document, error) {
-    //log.Println("fetching", req.URL)
-
     var resp, e = fc.Do(req)
     if e != nil {
         return nil, e
@@ -52,18 +49,4 @@ func (fc *Fetcher) FetchDoc(req *http.Request) (*goquery.Document, error) {
     }
 
     return goquery.NewDocumentFromReader(resp.Body)
-}
-
-func (fc *Fetcher) GetLastPage(pageUrl string, selector string) uint16 {
-    log.Println("getting last page from,", pageUrl)
-
-    var req, _ = http.NewRequest("GET", pageUrl, nil)
-    req.Header.Set("User-Agent", fc.UserAgent)
-
-    var (
-        doc, _       = fc.FetchDoc(req)
-        lastPageATag = doc.Find(selector).Text()
-        lastPage, _  = strconv.Atoi(lastPageATag)
-    )
-    return uint16(lastPage)
 }

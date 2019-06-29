@@ -31,6 +31,7 @@ func ParsePost(doc *goquery.Document, fc *fetcher.Fetcher) engine.ParseResult {
         tasks []engine.Task
         post = Post{}
     )
+
     doc.Find(`.post-description`).Each(func(_ int, s *goquery.Selection) {
         s.Find(`tr`).Each(func(_ int, s *goquery.Selection) {
             switch k, v := strings.ToUpper(s.Find(`td:nth-child(1)`).Text()), strings.TrimSpace(s.Find(`td:nth-child(2)`).Text()); {

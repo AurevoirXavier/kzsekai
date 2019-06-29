@@ -6,6 +6,11 @@ import (
     "sexy/fetcher"
 )
 
+type Site interface {
+    GetLastPage()
+    Scrape()
+}
+
 type Engine interface {
     Run(*fetcher.Fetcher, []Task)
 }

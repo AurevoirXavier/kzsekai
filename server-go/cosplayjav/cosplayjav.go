@@ -3,11 +3,13 @@ package cosplayjav
 import (
     "fmt"
     "github.com/PuerkitoBio/goquery"
+    "log"
     "net/http"
     "sexy/cosplayjav/parser"
     "sexy/engine"
     "sexy/fetcher"
     "sexy/scheduler"
+    "strconv"
 )
 
 type CosplayJav struct {
@@ -23,17 +25,37 @@ const (
 )
 
 func NewCosplayJav() *CosplayJav {
-    var fc = fetcher.Fetcher{Client: http.DefaultClient}
+    var fc = fetcher.Fetcher{
+        Client:    http.DefaultClient,
+        UserAgent: "Mozilla/5.0",
+    }
+
     fc.SetProxy(ProxyUrl)
     fc.Bypass(Host)
 
     return &CosplayJav{
-        LastPage: fc.GetLastPage(Host, `a.page-numbers:nth-child(10)`),
+        LastPage: 0,
         Fetcher:  &fc,
     }
 }
 
+func (cosplayJav *CosplayJav) GetLastPage() {
+    log.Println("getting last page from,", Host)
+
+    var req, _ = http.NewRequest("GET", Host, nil)
+    req.Header.Set("User-Agent", cosplayJav.Fetcher.UserAgent)
+
+    var (
+        doc, _       = cosplayJav.Fetcher.FetchDoc(req)
+        lastPageATag = doc.Find(`a.page-numbers:nth-child(10)`)
+        lastPage, _  = strconv.Atoi(lastPageATag.Text())
+    )
+    cosplayJav.LastPage = uint16(lastPage)
+}
+
 func (cosplayJav *CosplayJav) Scrape() {
+    cosplayJav.GetLastPage()
+
     var tasks []engine.Task
 
     for pageNum := uint16(1); pageNum < cosplayJav.LastPage; pageNum += 1 {
