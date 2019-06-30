@@ -12,7 +12,7 @@ func work(fc *fetcher.Fetcher, task Task) (ParseResult, error) {
     task.Request.Header.Set("User-Agent", fc.UserAgent)
     var doc, e = fc.FetchDoc(task.Request)
     if e != nil {
-        log.Printf("error, fetching %s, %v\n", task.Request.URL, e)
+        log.Printf("error, %v, while fetching %s\n", e, task.Request.URL)
         return ParseResult{}, e
     } else {
         return task.ParserFunc(doc), nil
