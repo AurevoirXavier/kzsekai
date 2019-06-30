@@ -12,8 +12,8 @@ import (
 )
 
 type Parts struct {
-    Free map[string]string
-    HD   map[string]string
+    Free map[string]map[string]string
+    HD   map[string]map[string]string
 }
 
 type Post struct {
@@ -96,14 +96,18 @@ func parseScript(script string) Parts {
     )
 
     if hds, ok := raw["HD"]; ok {
-        parts.HD = make(map[string]string)
-        for k, v := range hds.(map[string]interface{}) {
-            fmt.Printf("%#v\n", v)
+        parts.HD = make(map[string]map[string]string)
+
+        for k1, v := range hds.(map[string]interface{}) {
+            parts.HD[k1] = make(map[string]string)
+
             switch v := v.(type) {
             case string:
-                parts.HD[k] = v
+                parts.HD[k1]["A"] = v
             case map[string]interface{}:
-                fmt.Println(v)
+                for k2, v := range v {
+                    parts.HD[k1][k2] = v.(string)
+                }
             }
         }
 
@@ -111,30 +115,33 @@ func parseScript(script string) Parts {
     }
 
     if len(raw) != 0 {
-        re = regexp.MustCompile(`host=(.+?)&vid=(.+)`)
-        parts.Free = make(map[string]string)
+        var format = "%s"
 
-        for _, v := range raw {
-            switch v.(type) {
+        re = regexp.MustCompile(`vid=(.+)`)
+        parts.Free = make(map[string]map[string]string)
+
+        for k1, v := range raw {
+            switch k1 {
+            case "asc":
+                k1 = "asianclub"
+                format = "https://asianclub.tv/f/%s"
+            case "VS":
+                k1 = "verystream"
+                format = "https://verystream.com/stream/%s"
+            case "VO":
+                k1 = "vidoza"
+                format = "https://vidoza.net/%s.html"
+            }
+
+            parts.Free[k1] = make(map[string]string)
+
+            switch v := v.(type) {
             case string:
-                var (
-                    matched = re.FindStringSubmatch(v.(string))
-                    k       = matched[1]
-                    v       = decode2(decode1(matched[2]))
-                )
-
-                switch k {
-                case "asianclub":
-                    v = fmt.Sprintf("https://asianclub.tv/f/%s", v)
-                case "verystream":
-                    v = fmt.Sprintf("https://verystream.com/stream/%s", v)
-                case "vidoza":
-                    v = fmt.Sprintf("https://vidoza.net/%s.html", v)
-                }
-
-                parts.Free[k] = v
+                parts.Free[k1]["A"] = fmt.Sprintf(format, decode2(decode1(re.FindStringSubmatch(v)[1])))
             case map[string]interface{}:
-                fmt.Println(v)
+                for k2, v := range v {
+                    parts.Free[k1][k2] = fmt.Sprintf(format, decode2(decode1(re.FindStringSubmatch(v.(string))[1])))
+                }
             }
         }
     }
