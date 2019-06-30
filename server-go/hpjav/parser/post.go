@@ -2,13 +2,19 @@ package parser
 
 import (
     "encoding/base64"
+    "encoding/json"
+    "fmt"
     "github.com/PuerkitoBio/goquery"
     "regexp"
     "sexy/engine"
-    "sexy/fetcher"
     "strconv"
     "strings"
 )
+
+type Parts struct {
+    Free map[string]string
+    HD   map[string]string
+}
 
 type Post struct {
     Categories []string
@@ -18,10 +24,10 @@ type Post struct {
     Tags       []string
     Title      string
 
-    Parts []string
+    Parts Parts
 }
 
-func decode(b64Code string) string {
+func decode1(b64Code string) string {
     var (
         salt         = "fLgwk8@9a*ag_)eq&#I^a6h8h#13"
         saltLen      = len(salt)
@@ -63,27 +69,80 @@ func decode(b64Code string) string {
     return s
 }
 
-func parseScript(script string) []string {
+func decode2(code string) string {
+    var b64Code = ""
+    for i := len(code); i > 1; i -= 2 {
+        var x, _ = strconv.ParseInt(code[i-1:i]+code[i-2:i-1], 16, 0)
+        b64Code += string(int(x))
+    }
+
+    var b64Decode, _ = base64.StdEncoding.DecodeString(b64Code)
+    return string(b64Decode)
+}
+
+func parseScript(script string) Parts {
     var (
         re    *regexp.Regexp
-        parts []string
+        parts Parts
     )
 
     re = regexp.MustCompile(`data=JSON\.parse\(atob\("(.+?)"\)\)`)
     var (
         b64Code      = re.FindStringSubmatch(script)[1]
         b64Decode, _ = base64.StdEncoding.DecodeString(b64Code)
+
+        raw = make(map[string]interface{})
+        _   = json.Unmarshal(b64Decode, &raw)
     )
 
-    re = regexp.MustCompile(`vid=(.+?)"`)
-    for _, code := range re.FindAllStringSubmatch(string(b64Decode), -1) {
-        parts = append(parts, decode(code[1]))
+    if hds, ok := raw["HD"]; ok {
+        parts.HD = make(map[string]string)
+        for k, v := range hds.(map[string]interface{}) {
+            fmt.Printf("%#v\n", v)
+            switch v := v.(type) {
+            case string:
+                parts.HD[k] = v
+            case map[string]interface{}:
+                fmt.Println(v)
+            }
+        }
+
+        delete(raw, "HD")
+    }
+
+    if len(raw) != 0 {
+        re = regexp.MustCompile(`host=(.+?)&vid=(.+)`)
+        parts.Free = make(map[string]string)
+
+        for _, v := range raw {
+            switch v.(type) {
+            case string:
+                var (
+                    matched = re.FindStringSubmatch(v.(string))
+                    k       = matched[1]
+                    v       = decode2(decode1(matched[2]))
+                )
+
+                switch k {
+                case "asianclub":
+                    v = fmt.Sprintf("https://asianclub.tv/f/%s", v)
+                case "verystream":
+                    v = fmt.Sprintf("https://verystream.com/stream/%s", v)
+                case "vidoza":
+                    v = fmt.Sprintf("https://vidoza.net/%s.html", v)
+                }
+
+                parts.Free[k] = v
+            case map[string]interface{}:
+                fmt.Println(v)
+            }
+        }
     }
 
     return parts
 }
 
-func ParsePost(doc *goquery.Document, fc *fetcher.Fetcher) engine.ParseResult {
+func ParsePost(doc *goquery.Document) engine.ParseResult {
     var post = Post{}
 
     doc.Find(`.video-countext-categories a`).Each(func(_ int, s *goquery.Selection) {
