@@ -59,6 +59,7 @@ func (cosplayJav *CosplayJav) Scrape() {
     var tasks []engine.Task
 
     for pageNum := uint16(1); pageNum < cosplayJav.LastPage; pageNum += 1 {
+    //for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
         var (
             pageUrl = fmt.Sprintf("%s/page/%d", Host, pageNum)
             req, _  = http.NewRequest("GET", pageUrl, nil)
