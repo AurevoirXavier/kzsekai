@@ -2,7 +2,6 @@ package hpjav
 
 import (
     "fmt"
-    "github.com/PuerkitoBio/goquery"
     "log"
     "net/http"
     "sexy/engine"
@@ -56,12 +55,12 @@ func (hpJav *HpJav) Scrape() {
 
     //for pageNum := uint16(1); pageNum < hpJav.LastPage; pageNum += 1 {
     for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
-        var (
-            pageUrl = fmt.Sprintf("%s/tw/tag/cosplay/page/%d", Host, pageNum)
-            req, _  = http.NewRequest("GET", pageUrl, nil)
-            task    = engine.Task{Request: req, ParserFunc: func(doc *goquery.Document) engine.ParseResult { return parser.ParsePage(doc, hpJav.Fetcher) }}
-        )
-        tasks = append(tasks, task)
+       var (
+           pageUrl = fmt.Sprintf("%s/tw/tag/cosplay/page/%d", Host, pageNum)
+           req, _  = http.NewRequest("GET", pageUrl, nil)
+           task    = engine.Task{Request: req, ParserFunc: parser.ParsePage }
+       )
+       tasks = append(tasks, task)
     }
 
     var basicEngine = engine.BasicEngine{}
