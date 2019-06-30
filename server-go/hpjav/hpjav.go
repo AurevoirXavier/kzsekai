@@ -7,6 +7,7 @@ import (
     "sexy/engine"
     "sexy/fetcher"
     "sexy/hpjav/parser"
+    "sexy/scheduler"
     "strconv"
 )
 
@@ -53,21 +54,21 @@ func (hpJav *HpJav) Scrape() {
 
     var tasks []engine.Task
 
-    //for pageNum := uint16(1); pageNum < hpJav.LastPage; pageNum += 1 {
-    for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
-       var (
-           pageUrl = fmt.Sprintf("%s/tw/tag/cosplay/page/%d", Host, pageNum)
-           req, _  = http.NewRequest("GET", pageUrl, nil)
-           task    = engine.Task{Request: req, ParserFunc: parser.ParsePage }
-       )
-       tasks = append(tasks, task)
+    for pageNum := uint16(1); pageNum < hpJav.LastPage; pageNum += 1 {
+        //for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
+        var (
+            pageUrl = fmt.Sprintf("%s/tw/tag/cosplay/page/%d", Host, pageNum)
+            req, _  = http.NewRequest("GET", pageUrl, nil)
+            task    = engine.Task{Request: req, ParserFunc: parser.ParsePage}
+        )
+        tasks = append(tasks, task)
     }
 
-    var basicEngine = engine.BasicEngine{}
-    basicEngine.Run(hpJav.Fetcher, tasks)
-    //var advancedEngine = engine.AdvancedEngine{
-    // WorkerNum: WorkerNum,
-    // Scheduler: &scheduler.AdvancedScheduler{},
-    //}
-    //advancedEngine.Run(hpJav.Fetcher, tasks)
+    //var basicEngine = engine.BasicEngine{}
+    //basicEngine.Run(hpJav.Fetcher, tasks)
+    var advancedEngine = engine.AdvancedEngine{
+        WorkerNum: WorkerNum,
+        Scheduler: &scheduler.AdvancedScheduler{},
+    }
+    advancedEngine.Run(hpJav.Fetcher, tasks)
 }
