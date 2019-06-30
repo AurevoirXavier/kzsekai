@@ -17,12 +17,13 @@ type Parts struct {
 }
 
 type Post struct {
+    Id     string
+    SiteId string
+    Title  string
+
     Categories []string
-    Id         string
     Models     []string
-    SiteId     string
     Tags       []string
-    Title      string
 
     Parts Parts
 }
@@ -152,27 +153,24 @@ func parseScript(script string) Parts {
 func ParsePost(doc *goquery.Document) engine.ParseResult {
     var post = Post{}
 
-    doc.Find(`.video-countext-categories a`).Each(func(_ int, s *goquery.Selection) {
-        var tltle, _ = s.Attr("tltle")
-        post.Categories = append(post.Categories, tltle)
-    })
-
     var (
         postUrl, _ = doc.Find(`head > link:nth-child(6)`).Attr("href")
         splitUrl   = strings.Split(postUrl, "/")
     )
     post.Id = splitUrl[len(splitUrl)-1]
     post.SiteId = splitUrl[len(splitUrl)-2]
-
     post.Title = doc.Find(`.video-title h1`).Text()
 
+    doc.Find(`.video-countext-categories a`).Each(func(_ int, s *goquery.Selection) {
+        var tltle, _ = s.Attr("tltle")
+        post.Categories = append(post.Categories, tltle)
+    })
+    doc.Find(`.video-box-model-name`).Each(func(_ int, s *goquery.Selection) {
+        post.Models = append(post.Models, s.Text())
+    })
     doc.Find(`.video-countext-tags a`).Each(func(_ int, s *goquery.Selection) {
         var title, _ = s.Attr("title")
         post.Tags = append(post.Tags, title)
-    })
-
-    doc.Find(`.video-box-model-name`).Each(func(_ int, s *goquery.Selection) {
-        post.Models = append(post.Models, s.Text())
     })
 
     post.Parts = parseScript(doc.Find(`#down_file > script:nth-child(2)`).Text())

@@ -6,6 +6,7 @@ import (
     "net/http"
     "sexy/engine"
     "sexy/fetcher"
+    "sexy/hpjav/config"
     "sexy/hpjav/parser"
     "sexy/scheduler"
     "strconv"
@@ -16,11 +17,6 @@ type HpJav struct {
 
     Fetcher *fetcher.Fetcher
 }
-
-const (
-    Host      = "https://hpjav.tv"
-    WorkerNum = 30
-)
 
 func NewHpJav() *HpJav {
     var fc = fetcher.Fetcher{
@@ -35,9 +31,11 @@ func NewHpJav() *HpJav {
 }
 
 func (hpJav *HpJav) GetLastPage() {
-    log.Println("getting last page from,", Host)
+    var firstPageUrl = fmt.Sprintf("%s/tw/tag/cosplay", config.Host)
 
-    var req, _ = http.NewRequest("GET", fmt.Sprintf("%s/tw/tag/cosplay", Host), nil)
+    log.Println("getting last page from,", firstPageUrl)
+
+    var req, _ = http.NewRequest("GET", firstPageUrl, nil)
     req.Header.Set("User-Agent", hpJav.Fetcher.UserAgent)
 
     var (
@@ -57,7 +55,7 @@ func (hpJav *HpJav) Scrape() {
     for pageNum := uint16(1); pageNum < hpJav.LastPage; pageNum += 1 {
         //for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
         var (
-            pageUrl = fmt.Sprintf("%s/tw/tag/cosplay/page/%d", Host, pageNum)
+            pageUrl = fmt.Sprintf("%s/tw/tag/cosplay/page/%d", config.Host, pageNum)
             req, _  = http.NewRequest("GET", pageUrl, nil)
             task    = engine.Task{Request: req, ParserFunc: parser.ParsePage}
         )
@@ -67,7 +65,7 @@ func (hpJav *HpJav) Scrape() {
     //var basicEngine = engine.BasicEngine{}
     //basicEngine.Run(hpJav.Fetcher, tasks)
     var advancedEngine = engine.AdvancedEngine{
-        WorkerNum: WorkerNum,
+        WorkerNum: config.WorkerNum,
         Scheduler: &scheduler.AdvancedScheduler{},
     }
     advancedEngine.Run(hpJav.Fetcher, tasks)

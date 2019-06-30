@@ -5,6 +5,7 @@ import (
     "github.com/PuerkitoBio/goquery"
     "log"
     "net/http"
+    "sexy/cosplayjav/config"
     "sexy/cosplayjav/parser"
     "sexy/engine"
     "sexy/fetcher"
@@ -18,20 +19,14 @@ type CosplayJav struct {
     Fetcher *fetcher.Fetcher
 }
 
-const (
-    Host      = "http://cosplayjav.pl"
-    ProxyUrl  = "http://127.0.0.1:1087"
-    WorkerNum = 30
-)
-
 func NewCosplayJav() *CosplayJav {
     var fc = fetcher.Fetcher{
         Client:    http.DefaultClient,
         UserAgent: "Mozilla/5.0",
     }
 
-    fc.SetProxy(ProxyUrl)
-    fc.Bypass(Host)
+    fc.SetProxy(config.ProxyUrl)
+    fc.Bypass(config.Host)
 
     return &CosplayJav{
         LastPage: 0,
@@ -40,9 +35,9 @@ func NewCosplayJav() *CosplayJav {
 }
 
 func (cosplayJav *CosplayJav) GetLastPage() {
-    log.Println("getting last page from,", Host)
+    log.Println("getting last page from,", config.Host)
 
-    var req, _ = http.NewRequest("GET", Host, nil)
+    var req, _ = http.NewRequest("GET", config.Host, nil)
     req.Header.Set("User-Agent", cosplayJav.Fetcher.UserAgent)
 
     var (
@@ -59,17 +54,19 @@ func (cosplayJav *CosplayJav) Scrape() {
     var tasks []engine.Task
 
     for pageNum := uint16(1); pageNum < cosplayJav.LastPage; pageNum += 1 {
-    //for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
+        //for pageNum := uint16(1); pageNum < 2; pageNum += 1 {
         var (
-            pageUrl = fmt.Sprintf("%s/page/%d", Host, pageNum)
+            pageUrl = fmt.Sprintf("%s/page/%d", config.Host, pageNum)
             req, _  = http.NewRequest("GET", pageUrl, nil)
             task    = engine.Task{Request: req, ParserFunc: func(doc *goquery.Document) engine.ParseResult { return parser.ParsePage(doc, cosplayJav.Fetcher) }}
         )
         tasks = append(tasks, task)
     }
 
+    //var basicEngine = engine.BasicEngine{}
+    //basicEngine.Run(hpJav.Fetcher, tasks)
     var advancedEngine = engine.AdvancedEngine{
-        WorkerNum: WorkerNum,
+        WorkerNum: config.WorkerNum,
         Scheduler: &scheduler.AdvancedScheduler{},
     }
     advancedEngine.Run(cosplayJav.Fetcher, tasks)
