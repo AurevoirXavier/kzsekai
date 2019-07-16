@@ -31,3 +31,7 @@ type Scheduler interface {
     WorkerChannel() chan Task
     Run()
 }
+
+func DebugNilParserFunc(*goquery.Document) ParseResult {
+    return ParseResult{}
+}
